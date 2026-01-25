@@ -2024,6 +2024,7 @@ name = "liumo"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "flate2",
  "reqwest 0.13.1",
  "rusqlite",
  "serde",

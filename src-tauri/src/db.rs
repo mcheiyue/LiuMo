@@ -2,6 +2,9 @@ use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
+use flate2::read::GzDecoder;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Poetry {
@@ -25,25 +28,40 @@ pub fn init_db(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     }
     let db_path = app_data_dir.join("liumo.db");
     
-    let conn = Connection::open(&db_path)?;
-    
-    // Create table
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS poetry (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            author TEXT NOT NULL,
-            dynasty TEXT,
-            content TEXT NOT NULL,
-            type TEXT NOT NULL
-        )",
-        [],
-    )?;
-
-    // Check if empty, if so, seed demo data
-    let count: i64 = conn.query_row("SELECT count(*) FROM poetry", [], |row| row.get(0))?;
-    if count == 0 {
-        seed_demo_data(&conn)?;
+    // Check if DB exists, if not, decompress from resources
+    if !db_path.exists() {
+        // Look for the resource file
+        let resource_path = app.path().resolve("resources/liumo_full.db.gz", tauri::path::BaseDirectory::Resource)?;
+        
+        if resource_path.exists() {
+            println!("Extracting database from {:?}", resource_path);
+            let input = File::open(&resource_path)?;
+            let mut decoder = GzDecoder::new(BufReader::new(input));
+            let output = File::create(&db_path)?;
+            let mut writer = BufWriter::new(output);
+            
+            std::io::copy(&mut decoder, &mut writer)?;
+            println!("Database extracted to {:?}", db_path);
+        } else {
+            // Fallback: Create empty DB (should generally not happen if bundled correctly)
+            let conn = Connection::open(&db_path)?;
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS poetry (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    author TEXT NOT NULL,
+                    dynasty TEXT,
+                    content TEXT NOT NULL,
+                    type TEXT NOT NULL
+                )",
+                [],
+            )?;
+            // Optional: Seed demo data if resource missing
+            let count: i64 = conn.query_row("SELECT count(*) FROM poetry", [], |row| row.get(0)).unwrap_or(0);
+            if count == 0 {
+                seed_demo_data(&conn)?;
+            }
+        }
     }
 
     Ok(())
@@ -67,7 +85,7 @@ fn seed_demo_data(conn: &Connection) -> Result<()> {
 }
 
 #[tauri::command]
-pub fn search_poetry(app: AppHandle, keyword: String, type_filter: String) -> Result<Vec<Poetry>, String> {
+pub fn search_poetry(app: AppHandle, keyword: String, type_filter: String, offset: i64, limit: i64) -> Result<Vec<Poetry>, String> {
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let db_path = app_data_dir.join("liumo.db");
     let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
@@ -76,14 +94,22 @@ pub fn search_poetry(app: AppHandle, keyword: String, type_filter: String) -> Re
     
     if type_filter != "all" {
         query.push_str(" AND type = '");
-        query.push_str(&type_filter); // Note: In production, bind this parameter safely
+        // Simple sanitization to prevent injection in this specific spot (though bind params are better)
+        let safe_type = type_filter.replace("'", ""); 
+        query.push_str(&safe_type);
         query.push_str("'");
     }
     
+    // Add Pagination LIMIT ? OFFSET ?
+    query.push_str(" LIMIT ?2 OFFSET ?3");
+
     let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
     let pattern = format!("%{}%", keyword);
     
-    let rows = stmt.query_map(params![pattern], |row| {
+    // Cap limit to 100 max to prevent massive JSON serialization
+    let safe_limit = if limit > 100 { 100 } else { limit };
+
+    let rows = stmt.query_map(params![pattern, safe_limit, offset], |row| {
         Ok(Poetry {
             id: row.get(0)?,
             title: row.get(1)?,
