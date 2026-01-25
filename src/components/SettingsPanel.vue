@@ -1,10 +1,10 @@
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
   gridType: 'mizi' | 'tianzi' | 'huigong' | 'none';
   showGrid: boolean;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'update:gridType', val: 'mizi' | 'tianzi' | 'huigong' | 'none'): void;
   (e: 'update:showGrid', val: boolean): void;
   (e: 'close'): void;
