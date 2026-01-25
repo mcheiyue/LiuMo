@@ -45,7 +45,10 @@ jobs:
       - name: Prepare Portable Executable
         shell: bash
         run: |
-          cp src-tauri/target/release/liumo.exe src-tauri/target/release/liumo-portable.exe
+          # Find the executable (insensitive to case or name change)
+          EXE_PATH=$(find src-tauri/target/release -maxdepth 1 -name "*.exe" | head -n 1)
+          echo "Found executable: $EXE_PATH"
+          cp "$EXE_PATH" src-tauri/target/release/liumo-portable.exe
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
