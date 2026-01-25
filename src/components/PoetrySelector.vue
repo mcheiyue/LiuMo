@@ -1,29 +1,45 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import type { Poetry, PoetryCollection } from '../types/poetry';
-import demoData from '../assets/demo-poetry.json';
+import { ref, watch, onMounted } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+import type { Poetry } from '../types/poetry';
 
 const emit = defineEmits<{
   (e: 'select', text: string): void
   (e: 'close'): void
 }>();
 
-const collection = demoData as PoetryCollection;
+const poetryList = ref<Poetry[]>([]);
 const searchQuery = ref('');
 const selectedType = ref<string>('all');
+const isLoading = ref(false);
 
-const filteredPoetry = computed(() => {
-  return collection.data.filter(p => {
-    const matchesSearch = p.title.includes(searchQuery.value) || p.author.includes(searchQuery.value);
-    const matchesType = selectedType.value === 'all' || p.type === selectedType.value;
-    return matchesSearch && matchesType;
-  });
-});
+async function fetchPoetry() {
+  isLoading.value = true;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results = await invoke<any[]>('search_poetry', {
+      keyword: searchQuery.value,
+      typeFilter: selectedType.value
+    });
+    
+    // Parse content from JSON string
+    poetryList.value = results.map(p => ({
+      ...p,
+      type: p.type_, // Map Rust type_ to type
+      content: JSON.parse(p.content)
+    }));
+  } catch (e) {
+    console.error("Failed to fetch poetry:", e);
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+// Fetch on mount and when filters change
+onMounted(fetchPoetry);
+watch([searchQuery, selectedType], fetchPoetry);
 
 function selectPoetry(poetry: Poetry) {
-  // Combine content into a single string, stripping punctuation if needed, 
-  // but for now let's keep it simple and just join them.
-  // For calligraphy, we often want just the characters, but punctuation is fine too.
   const text = poetry.content.join(''); 
   emit('select', text);
   emit('close');
@@ -36,7 +52,7 @@ function selectPoetry(poetry: Poetry) {
       <!-- Header -->
       <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-200/50">
         <h2 class="text-xl font-bold flex items-center gap-2">
-          <span>📚</span> 诗词库
+          <span>📚</span> 诗词库 (SQLite)
         </h2>
         <button class="btn btn-sm btn-circle btn-ghost" @click="$emit('close')">✕</button>
       </div>
@@ -44,10 +60,11 @@ function selectPoetry(poetry: Poetry) {
       <!-- Filters -->
       <div class="p-4 flex gap-2">
         <input 
-          v-model="searchQuery" 
+          v-model.lazy="searchQuery" 
           type="text" 
           placeholder="搜索标题或作者..." 
           class="input input-bordered input-sm flex-1"
+          @keyup.enter="fetchPoetry"
         />
         <select v-model="selectedType" class="select select-bordered select-sm">
           <option value="all">全部</option>
@@ -59,9 +76,13 @@ function selectPoetry(poetry: Poetry) {
       </div>
       
       <!-- List -->
-      <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-base-100">
+      <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-base-100 relative">
+        <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-base-100/50 z-10">
+          <span class="loading loading-spinner loading-md text-cinnabar"></span>
+        </div>
+
         <div 
-          v-for="poetry in filteredPoetry" 
+          v-for="poetry in poetryList" 
           :key="poetry.id"
           class="card card-compact bg-base-100 border border-base-200 hover:border-cinnabar/50 hover:bg-stone-50 transition-colors cursor-pointer group"
           @click="selectPoetry(poetry)"
@@ -80,7 +101,7 @@ function selectPoetry(poetry: Poetry) {
           </div>
         </div>
         
-        <div v-if="filteredPoetry.length === 0" class="text-center py-10 text-base-content/50">
+        <div v-if="!isLoading && poetryList.length === 0" class="text-center py-10 text-base-content/50">
           没有找到相关诗词
         </div>
       </div>
