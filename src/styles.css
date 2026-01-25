@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+@theme {
+  --color-paper: #F9F4E8;
+  --color-ink: #1A1A1A;
+  --color-cinnabar: #B22222;
+  --color-inkstone: #4A4A4A;
+}
+
+:root {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: "KaiTi", "STKaiti", serif; /* Default to KaiTi for calligraphy feel */
+}
+
+/* Vertical writing mode utility */
+.writing-vertical-rl {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
