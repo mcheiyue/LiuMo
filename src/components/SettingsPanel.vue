@@ -1,12 +1,9 @@
 <script setup lang="ts">
-defineProps<{
-  gridType: 'mizi' | 'tianzi' | 'huigong' | 'none';
-  showGrid: boolean;
-}>();
+import { useConfigStore } from '../stores/config';
+
+const config = useConfigStore();
 
 defineEmits<{
-  (e: 'update:gridType', val: 'mizi' | 'tianzi' | 'huigong' | 'none'): void;
-  (e: 'update:showGrid', val: boolean): void;
   (e: 'close'): void;
 }>();
 
@@ -34,8 +31,7 @@ const gridOptions = [
             <input 
               type="checkbox" 
               class="toggle toggle-error" 
-              :checked="showGrid"
-              @change="$emit('update:showGrid', ($event.target as HTMLInputElement).checked)" 
+              v-model="config.showGrid"
             />
           </label>
         </div>
@@ -48,8 +44,8 @@ const gridOptions = [
               v-for="option in gridOptions"
               :key="option.value"
               class="btn btn-outline"
-              :class="{ 'btn-active bg-cinnabar text-white border-cinnabar hover:bg-red-800 hover:border-red-900': gridType === option.value }"
-              @click="$emit('update:gridType', option.value)"
+              :class="{ 'btn-active bg-cinnabar text-white border-cinnabar hover:bg-red-800 hover:border-red-900': config.gridType === option.value }"
+              @click="config.gridType = option.value"
             >
               {{ option.label }}
             </button>

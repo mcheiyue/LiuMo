@@ -16,6 +16,8 @@
     "@tauri-apps/plugin-opener": "^2",
     "dom-to-image-more": "^3.7.2",
     "jspdf": "^4.0.0",
+    "pinia": "^3.0.4",
+    "pinia-plugin-persistedstate": "^4.7.1",
     "vue": "^3.5.13"
   },
   "devDependencies": {

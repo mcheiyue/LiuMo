@@ -1,30 +1,26 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useConfigStore } from './stores/config';
 import PaperCanvas from './components/PaperCanvas.vue';
 import FontDropZone from './components/FontDropZone.vue';
 import PoetrySelector from './components/PoetrySelector.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import { exportToPDF } from './utils/exporter';
 
-const text = ref("天地玄黄宇宙洪荒日月盈昃辰宿列张寒来暑往秋收冬藏闰余成岁律吕调阳");
-const currentFont = ref("");
+const config = useConfigStore();
 const showPoetrySelector = ref(false);
 const showSettings = ref(false);
 const canvasComponentRef = ref<InstanceType<typeof PaperCanvas> | null>(null);
 const isExporting = ref(false);
 
-// Settings State
-const gridType = ref<'mizi' | 'tianzi' | 'huigong' | 'none'>('mizi');
-const showGrid = ref(true);
-
 function onFontLoaded(fontName: string) {
   // Update the reactive font variable to only affect the canvas
   console.log("App received font:", fontName);
-  currentFont.value = fontName;
+  config.setFont(fontName);
 }
 
 function onPoetrySelected(newText: string) {
-  text.value = newText;
+  config.updateText(newText);
   showPoetrySelector.value = false;
 }
 
@@ -50,8 +46,6 @@ async function handleExport() {
     <PoetrySelector v-if="showPoetrySelector" @select="onPoetrySelected" @close="showPoetrySelector = false" />
     <SettingsPanel 
       v-if="showSettings" 
-      v-model:gridType="gridType" 
-      v-model:showGrid="showGrid" 
       @close="showSettings = false" 
     />
     
@@ -63,7 +57,7 @@ async function handleExport() {
       
       <div class="flex-1 max-w-xl mx-4">
         <input 
-          v-model="text" 
+          v-model="config.text" 
           class="input input-bordered input-sm w-full bg-stone-50 text-ink focus:border-cinnabar focus:outline-none" 
           placeholder="请输入要练习的文字..."
         />
@@ -85,10 +79,10 @@ async function handleExport() {
     <main class="flex-1 overflow-hidden relative">
       <PaperCanvas 
         ref="canvasComponentRef"
-        :text="text" 
-        :font-family="currentFont"
-        :grid-type="gridType"
-        :show-grid="showGrid"
+        :text="config.text" 
+        :font-family="config.currentFont"
+        :grid-type="config.gridType"
+        :show-grid="config.showGrid"
       />
     </main>
   </div>
