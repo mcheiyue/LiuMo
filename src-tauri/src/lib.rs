@@ -1,3 +1,5 @@
+use tauri::Manager;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -16,6 +18,15 @@ pub fn run() {
         .setup(|app| {
             // Initialize Database on startup
             db::init_db(app.handle()).expect("failed to init db");
+            
+            // Explicitly set window icon for Windows Taskbar reliability
+            #[cfg(target_os = "windows")]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_icon(tauri::image::Image::from_bytes(include_bytes!("../icons/icon.ico")).expect("failed to load icon"));
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -26,4 +37,3 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-
