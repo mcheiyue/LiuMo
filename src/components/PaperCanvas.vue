@@ -12,6 +12,7 @@ const props = withDefaults(defineProps<{
   verticalColumnOrder?: 'rtl' | 'ltr';
   smartSnap?: boolean;
   fixedGrid?: { enabled: boolean; rows: number; cols: number };
+  fontFaceCss?: string; // Phase 3: Custom Font Embedding
 }>(), {
   gridType: 'mizi',
   borderMode: 'full',
@@ -225,6 +226,9 @@ defineExpose({
       }"
       :style="gridStyle"
     >
+      <!-- Phase 3: Inject Custom Font CSS for Export -->
+      <component :is="'style'" v-if="fontFaceCss">{{ fontFaceCss }}</component>
+      
       <CharacterCell 
         v-for="n in (gridDimensions.rows * gridDimensions.cols)" 
         :key="n" 

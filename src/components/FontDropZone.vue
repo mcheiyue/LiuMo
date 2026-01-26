@@ -3,8 +3,11 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 
+import { useConfigStore } from '../stores/config';
+
 const isDragging = ref(false);
 const message = ref("");
+const config = useConfigStore();
 const emit = defineEmits<{
   (e: 'font-loaded', fontFamily: string): void
 }>();
@@ -60,6 +63,16 @@ async function handleFiles(paths: string[]) {
       // CRITICAL: Must load and add to document
       await fontFace.load();
       document.fonts.add(fontFace);
+
+      // Generate CSS for PDF export
+      const css = `
+        @font-face {
+          font-family: '${fontName}';
+          src: url('${fontUrl}');
+        }
+      `;
+      // Update store with both name and data
+      config.setFont(fontName, css);
       
       message.value = `成功加载: ${fontName}`;
       

@@ -26,6 +26,9 @@ export const useConfigStore = defineStore('config', () => {
     rows: 10,
     cols: 6
   });
+
+  // Font Face CSS (Base64) - Not persisted to avoid LocalStorage quota limits
+  const fontFaceCss = ref<string>("");
   
   // Watcher to auto-repair state if needed
   watchEffect(() => {
@@ -34,8 +37,11 @@ export const useConfigStore = defineStore('config', () => {
     }
   });
 
-  function setFont(fontName: string) {
+  function setFont(fontName: string, css?: string) {
     currentFont.value = fontName;
+    if (css) {
+      fontFaceCss.value = css;
+    }
   }
 
   function updateText(newText: string) {
@@ -45,6 +51,7 @@ export const useConfigStore = defineStore('config', () => {
   return {
     text,
     currentFont,
+    fontFaceCss,
     layoutDirection,
     verticalColumnOrder,
     borderMode,
@@ -55,6 +62,18 @@ export const useConfigStore = defineStore('config', () => {
     updateText
   };
 }, {
-  persist: true
+  persist: {
+    // Persist everything EXCEPT fontFaceCss (it's too large)
+    paths: [
+      'text', 
+      'currentFont', 
+      'layoutDirection', 
+      'verticalColumnOrder', 
+      'borderMode', 
+      'gridType', 
+      'smartSnap', 
+      'fixedGrid'
+    ]
+  }
 });
 

@@ -90,6 +90,7 @@ async function handleExport() {
         :vertical-column-order="config.verticalColumnOrder"
         :smart-snap="config.smartSnap"
         :fixed-grid="config.fixedGrid"
+        :font-face-css="config.fontFaceCss"
       />
     </main>
   </div>
