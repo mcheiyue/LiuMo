@@ -29,7 +29,10 @@ async function handleExport() {
   
   try {
     isExporting.value = true;
-    await exportToPDF(canvasComponentRef.value.contentRef);
+    const dateStr = new Date().toISOString().split('T')[0];
+    await exportToPDF(canvasComponentRef.value.contentRef, `LiuMo_${dateStr}.pdf`, {
+      layoutDirection: config.layoutDirection
+    });
   } catch (e) {
     console.error(e);
     // Show the actual error message
