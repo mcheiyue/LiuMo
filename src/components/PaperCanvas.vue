@@ -190,6 +190,9 @@ const gridStyle = computed(() => {
     gridAutoFlow: isVertical ? 'column' : 'row',
     // Handled explicitly for PDF export compatibility
     direction: isVertical ? props.verticalColumnOrder : 'ltr',
+    
+    // Inline Styles for Export Fidelity (dom-to-image style loss fix)
+    backgroundColor: 'rgba(178, 34, 34, 0.5)', // #B22222 at 50% opacity (bg-cinnabar/50)
   };
 });
 
