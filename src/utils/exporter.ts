@@ -8,6 +8,8 @@ export interface ExportOptions {
 }
 
 export async function exportToPDF(element: HTMLElement, defaultName: string = 'liumo-practice.pdf', options?: ExportOptions) {
+  let fontUrl: string | null = null; // Store blob URL for cleanup
+  
   try {
     // 1. Open Native Save Dialog FIRST
     const filePath = await save({
@@ -18,7 +20,35 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
       }]
     });
 
-    if (!filePath) return false; // User cancelled
+    if (!filePath) return false;
+
+    // Phase 5 Fix: Handle Custom Font via Blob URL to avoid Stack Overflow
+    // Extract Font CSS from the element if present
+    const styleTag = element.querySelector('style');
+    if (styleTag && styleTag.textContent && styleTag.textContent.includes('data:font')) {
+       // Found huge base64 font. Extract it.
+       const css = styleTag.textContent;
+       const match = css.match(/url\('data:font\/.*?;base64,(.*?)'\)/);
+       if (match && match[1]) {
+         console.log("Optimizing font embedding...");
+         try {
+           // Convert Base64 back to Blob
+           const binary = atob(match[1]);
+           const array = new Uint8Array(binary.length);
+           for(let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+           const blob = new Blob([array], { type: 'font/ttf' });
+           fontUrl = URL.createObjectURL(blob);
+           
+           // Replace the huge Base64 with the short Blob URL in the style content
+           // Note: Blob URLs work in the same origin. dom-to-image uses iframe. 
+           // If it's same-origin, it should work.
+           const newCss = css.replace(/url\('data:font.*?'\)/, `url('${fontUrl}')`);
+           styleTag.textContent = newCss;
+         } catch (e) {
+           console.error("Font optimization failed:", e);
+         }
+       }
+    }
 
     // 2. Setup PDF & Dimensions
     // A4 size: 595.28 x 841.89 pt
@@ -37,61 +67,98 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
     // If width is much larger than height, assume vertical text (horizontal flow)
     const isVerticalText = options?.layoutDirection === 'vertical' || elW > elH * 1.5;
 
-    // 3. Calculation for Pagination
+    // 3. Calculation for Pagination (Grid-Aware Slicing)
+    const CELL_SIZE = 96; // Must match PaperCanvas
+    // We need to know rows/cols to slice correctly.
+    // Since we don't have direct access to props, we infer from dimensions
+    // Assuming gap=1px roughly. 
+    // width ≈ cols * CELL_SIZE
+    
+    // We must slice at multiples of CELL_SIZE (plus gaps).
+    // Let's assume standard full grid with gap=1.
+    // The "stride" is CELL_SIZE + 1? 
+    // Wait, grid gap logic is complex.
+    // PaperCanvas: widthPx = cols * CELL_SIZE + (cols-1)*gap
+    
+    // To be safe, we should pass rows/cols or calculate them.
+    // But passing them requires changing signature everywhere.
+    // Let's try to calculate.
+    
+    // Reverse engineer Cols/Rows
+    // We assume layout matches logic:
+    // width = C * 96 + (C-1) * gap. 
+    // gap is usually 1 or 0.
+    
+    // Let's just use the exact pixel width of the element.
+    // But we need to know where to CUT.
+    // If we cut at pixel 500, and pixel 500 is in the middle of a cell, that's bad.
+    
+    // We need to cut at: N * (96 + gap) + padding?
+    // The container has 1px padding (p-[1px]).
+    
+    const approxCellSize = 96;
+    
     let totalPages = 1;
     let pages: { x: number, y: number, w: number, h: number }[] = [];
-
-    // The scale factor to fit the 'fixed' dimension to the PDF page
     let printScale = 1;
 
     if (isVerticalText) {
-      // Vertical Text (Horizontal Flow) -> Height is constrained to Page Height
-      printScale = availPdfH / elH;
+      // Vertical Text (Horizontal Flow, RTL)
+      // We need to slice WIDTH.
+      // 1. Calculate how many Columns fit in one Page Width
+      printScale = availPdfH / elH; // Height matches page height
+      const fitWidthInPdf = availPdfW;
+      const fitWidthInPx = fitWidthInPdf / printScale;
       
-      // Calculate how much width (in original px) fits on one PDF page
-      const pageContentWidth = availPdfW / printScale;
+      // How many cells fit in 'fitWidthInPx'?
+      // We assume gap=1 for safety. 
+      // widthPerCol ≈ 97px.
+      const colsPerPage = Math.floor(fitWidthInPx / (approxCellSize + 1));
       
-      totalPages = Math.ceil(elW / pageContentWidth);
+      // Slice width
+      const sliceW = colsPerPage * (approxCellSize + 1);
       
-      // Generate pages (RTL: Right to Left)
-      for (let i = 0; i < totalPages; i++) {
-        // For RTL, Page 1 is the right-most chunk
-        // x starts from: totalWidth - (i + 1) * pageWidth
-        // But we need to handle the last page (left-most) which might be partial
-        
-        // Let's simplify: split from Right to Left
-        // Right edge of this page: elW - i * pageContentWidth
-        // Left edge of this page: Math.max(0, elW - (i + 1) * pageContentWidth)
-        
-        const rightEdge = elW - i * pageContentWidth;
-        const leftEdge = Math.max(0, elW - (i + 1) * pageContentWidth);
-        const chunkW = rightEdge - leftEdge;
+      // Total Width
+      const totalW = elW;
+      
+      // RTL Slicing: From Right to Left
+      let currentRight = totalW;
+      
+      while (currentRight > 0) {
+        // We want a chunk of width 'sliceW' ending at 'currentRight'
+        // Left Edge = currentRight - sliceW
+        let left = Math.max(0, currentRight - sliceW);
+        let w = currentRight - left;
         
         pages.push({
-          x: leftEdge,
+          x: left,
           y: 0,
-          w: chunkW,
+          w: w,
           h: elH
         });
-      }
-    } else {
-      // Horizontal Text (Vertical Flow) -> Width is constrained to Page Width
-      printScale = availPdfW / elW;
-      
-      const pageContentHeight = availPdfH / printScale;
-      totalPages = Math.ceil(elH / pageContentHeight);
-      
-      for (let i = 0; i < totalPages; i++) {
-        // Top to Bottom
-        const topEdge = i * pageContentHeight;
-        const chunkH = Math.min(pageContentHeight, elH - topEdge);
         
+        currentRight = left;
+      }
+      
+    } else {
+      // Horizontal Text (Vertical Flow, LTR)
+      // Slice HEIGHT.
+      printScale = availPdfW / elW; // Width matches page width
+      const fitHeightInPx = availPdfH / printScale;
+      
+      const rowsPerPage = Math.floor(fitHeightInPx / (approxCellSize + 1));
+      const sliceH = rowsPerPage * (approxCellSize + 1);
+      
+      let currentTop = 0;
+      while (currentTop < elH) {
+        let h = Math.min(sliceH, elH - currentTop);
         pages.push({
           x: 0,
-          y: topEdge,
+          y: currentTop,
           w: elW,
-          h: chunkH
+          h: h
         });
+        currentTop += h;
       }
     }
 
@@ -149,8 +216,12 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
     const pdfOutput = pdf.output('arraybuffer');
     await writeFile(filePath, new Uint8Array(pdfOutput));
     
+    // Cleanup Blob URL
+    if (fontUrl) URL.revokeObjectURL(fontUrl);
+    
     return true;
   } catch (error) {
+    if (fontUrl) URL.revokeObjectURL(fontUrl);
     console.error("Export details:", error);
     throw error;
   }

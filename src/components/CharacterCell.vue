@@ -36,8 +36,14 @@ const gridPath = computed(() => {
     style="background-color: #F9F4E8;" 
   >
     <!-- Grid Layer (Internal lines only) -->
-    <svg v-if="showGrid && gridType !== 'none'" viewBox="0 0 100 100" class="absolute inset-0 w-full h-full pointer-events-none opacity-30 stroke-cinnabar fill-none stroke-[1]">
-      <path :d="gridPath" vector-effect="non-scaling-stroke" style="stroke: #B22222;" />
+    <!-- Phase 5 Fix: Ensure SVG is strictly controlled by gridType/showGrid -->
+    <svg 
+      v-if="showGrid && gridType !== 'none'" 
+      viewBox="0 0 100 100" 
+      class="absolute inset-0 w-full h-full pointer-events-none opacity-30 stroke-cinnabar fill-none stroke-[1]"
+      style="stroke: #B22222;"
+    >
+      <path :d="gridPath" vector-effect="non-scaling-stroke" />
     </svg>
     
     <!-- Text Layer -->

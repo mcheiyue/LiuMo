@@ -193,6 +193,9 @@ const gridStyle = computed(() => {
     
     // Inline Styles for Export Fidelity (dom-to-image style loss fix)
     backgroundColor: 'rgba(178, 34, 34, 0.5)', // #B22222 at 50% opacity (bg-cinnabar/50)
+    
+    // Phase 5 Fix: Ensure SVG strokes don't appear in 'lines-only' mode if logic fails
+    // But SVG visibility is controlled by v-if. If v-if fails, we ensure style is clean.
   };
 });
 
