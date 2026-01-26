@@ -55,7 +55,8 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
     const pdf = new jsPDF('p', 'pt', 'a4'); // Always Portrait for pagination flow usually
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 20;
+    // Phase 6 Fix: Increase margin to 40pt (approx 1.4cm) to prevent printer clipping
+    const margin = 40; 
     const availPdfW = pageWidth - margin * 2;
     const availPdfH = pageHeight - margin * 2;
 
@@ -110,10 +111,11 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
       const fitWidthInPdf = availPdfW;
       const fitWidthInPx = fitWidthInPdf / printScale;
       
-      // How many cells fit in 'fitWidthInPx'?
-      // We assume gap=1 for safety. 
-      // widthPerCol ≈ 97px.
-      const colsPerPage = Math.floor(fitWidthInPx / (approxCellSize + 1));
+      // Phase 6 Fix: Conservative Slicing
+      // Use floor to ensure we don't slice mid-column.
+      // approxCellSize + 1 covers cell + gap.
+      // We subtract a tiny buffer (0.1) to handle floating point precision issues.
+      const colsPerPage = Math.floor((fitWidthInPx - 0.1) / (approxCellSize + 1));
       
       // Slice width
       const sliceW = colsPerPage * (approxCellSize + 1);
@@ -146,7 +148,8 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
       printScale = availPdfW / elW; // Width matches page width
       const fitHeightInPx = availPdfH / printScale;
       
-      const rowsPerPage = Math.floor(fitHeightInPx / (approxCellSize + 1));
+      // Phase 6 Fix: Conservative Slicing for Rows
+      const rowsPerPage = Math.floor((fitHeightInPx - 0.1) / (approxCellSize + 1));
       const sliceH = rowsPerPage * (approxCellSize + 1);
       
       let currentTop = 0;

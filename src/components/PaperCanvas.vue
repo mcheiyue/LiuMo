@@ -155,12 +155,21 @@ const gridStyle = computed(() => {
   const isVertical = props.layoutDirection === 'vertical';
 
   // Gap Logic Details
-  let gapStyle = `${gap}px ${gap}px`;
+  // Phase 6 Fix: Explode gap shorthand to avoid browser parsing issues and visual artifacts
+  let rowGap = `${gap}px`;
+  let colGap = `${gap}px`;
+  
   if (props.borderMode === 'lines-only') {
-    if (isVertical) gapStyle = `0px ${gap}px`; // No horizontal gaps (rows connected), vertical lines exist
-    else gapStyle = `${gap}px 0px`; // No vertical gaps (cols connected), horizontal lines exist
+    if (isVertical) {
+      rowGap = '0px'; 
+      colGap = `${gap}px`;
+    } else {
+      rowGap = `${gap}px`;
+      colGap = '0px';
+    }
   } else if (props.borderMode === 'none') {
-    gapStyle = '0px';
+    rowGap = '0px';
+    colGap = '0px';
   }
 
   // Exact pixel dimensions to prevent Red Background leakage
@@ -175,7 +184,8 @@ const gridStyle = computed(() => {
 
   return {
     display: 'grid',
-    gap: gapStyle,
+    rowGap: rowGap,
+    columnGap: colGap,
     fontFamily: props.fontFamily ? `'${props.fontFamily}', serif` : 'inherit',
     
     // Explicit Templates
