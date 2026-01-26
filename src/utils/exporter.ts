@@ -64,9 +64,11 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
     const elW = element.offsetWidth;
     const elH = element.offsetHeight;
 
-    // Detect layout if not provided (fallback)
-    // If width is much larger than height, assume vertical text (horizontal flow)
-    const isVerticalText = options?.layoutDirection === 'vertical' || elW > elH * 1.5;
+    // Detect layout logic fix (Phase 7 Fix)
+    // Prioritize user option. Fallback to aspect ratio only if option missing.
+    const isVerticalText = options?.layoutDirection 
+      ? options.layoutDirection === 'vertical' 
+      : (elW > elH * 1.5);
 
     // 3. Calculation for Pagination (Grid-Aware Slicing)
     // const CELL_SIZE = 96; // Removed unused
@@ -186,7 +188,13 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
           width: `${elW}px`, // Important: Container must keep full size for content to flow
           height: `${elH}px`,
           boxShadow: 'none',
-          border: 'none'
+          border: 'none',
+          // Phase 7 Fix: Explicitly preserve critical styles that might be lost or overwritten
+          // We read them from the original element to ensure consistency
+          backgroundColor: element.style.backgroundColor || 'rgba(178, 34, 34, 0.5)',
+          direction: element.style.direction || 'ltr',
+          rowGap: element.style.rowGap,
+          columnGap: element.style.columnGap
         }
       };
 
