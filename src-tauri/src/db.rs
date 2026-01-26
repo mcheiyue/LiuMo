@@ -1,15 +1,13 @@
 use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write, Cursor};
+use std::io::{BufWriter, Write, Cursor};
 use flate2::read::GzDecoder;
 
 // EMBED THE DATABASE INTO THE BINARY
-// This makes the executable larger (~80MB) but ensures it is truly portable and standalone.
-// No more "missing resources" issues.
-const DB_GZ_BYTES: &[u8] = include_bytes!("../../resources/liumo_full.db.gz");
+// Correct path: relative to this file (src/db.rs) -> ../resources/
+const DB_GZ_BYTES: &[u8] = include_bytes!("../resources/liumo_full.db.gz");
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Poetry {
