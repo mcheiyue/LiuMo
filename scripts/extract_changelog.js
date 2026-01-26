@@ -7,18 +7,30 @@ const outputPath = path.join(process.cwd(), 'LATEST_RELEASE_NOTE.md');
 try {
   const content = fs.readFileSync(changelogPath, 'utf-8');
   
-  // Regex to find the latest version section
-  // Matches from "## v1.3.1" until the next "## v..." or end of file
-  const match = content.match(/## v[0-9]+\.[0-9]+\.[0-9]+.*?\n([\s\S]*?)(?=\n## v|$)/);
+  // Robust Regex for CRLF/LF handling
+  // 1. Matches header line: ## v1.2.3... (Capture Group 1 is full header content without ##)
+  // 2. Matches newline (CRLF or LF)
+  // 3. Captures content ([\s\S]*?) (Capture Group 2)
+  // 4. Lookahead for next version header or EOF
+  const match = content.match(/## (v[0-9]+\.[0-9]+\.[0-9]+.*?)(?:\r?\n|\r)([\s\S]*?)(?=(?:\r?\n|\r)## v|$)/);
 
-  if (match && match[1]) {
-    const notes = match[1].trim();
+  if (match && match[2]) {
+    const title = match[1].trim();
+    const notes = match[2].trim();
+    
     fs.writeFileSync(outputPath, notes);
-    console.log('✅ Extracted release notes to LATEST_RELEASE_NOTE.md');
-    console.log(notes); // Print to verify
+    
+    // Output title for GitHub Actions
+    if (process.env.GITHUB_OUTPUT) {
+      fs.appendFileSync(process.env.GITHUB_OUTPUT, `RELEASE_TITLE=${title}\n`);
+    }
+    
+    console.log(`✅ Extracted release notes for: ${title}`);
+    console.log('✅ Wrote content to LATEST_RELEASE_NOTE.md');
   } else {
     console.error('❌ Could not find version notes in CHANGELOG.md');
-    // Fallback content
+    // Debug info
+    console.log('Content preview:', content.substring(0, 200));
     fs.writeFileSync(outputPath, "See CHANGELOG.md for details.");
   }
 } catch (e) {

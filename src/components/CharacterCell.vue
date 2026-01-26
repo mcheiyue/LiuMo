@@ -32,10 +32,9 @@ const gridPath = computed(() => {
 
 <template>
   <div 
-    class="relative w-24 h-24 box-border flex items-center justify-center"
-    :class="{ 'border-t border-l border-cinnabar/50': showGrid && gridType !== 'none' }"
+    class="relative w-24 h-24 box-border flex items-center justify-center bg-paper"
   >
-    <!-- Grid Layer -->
+    <!-- Grid Layer (Internal lines only) -->
     <svg v-if="showGrid && gridType !== 'none'" viewBox="0 0 100 100" class="absolute inset-0 w-full h-full pointer-events-none opacity-30 stroke-cinnabar fill-none stroke-[1]">
       <path :d="gridPath" vector-effect="non-scaling-stroke" />
     </svg>

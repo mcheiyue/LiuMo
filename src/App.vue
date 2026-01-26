@@ -76,13 +76,17 @@ async function handleExport() {
       </div>
     </header>
     
-    <main class="flex-1 overflow-hidden relative">
+    <main class="flex-1 overflow-auto relative bg-stone-200">
       <PaperCanvas 
         ref="canvasComponentRef"
         :text="config.text" 
         :font-family="config.currentFont"
         :grid-type="config.gridType"
-        :show-grid="config.showGrid"
+        :border-mode="config.borderMode"
+        :layout-direction="config.layoutDirection"
+        :vertical-column-order="config.verticalColumnOrder"
+        :smart-snap="config.smartSnap"
+        :fixed-grid="config.fixedGrid"
       />
     </main>
   </div>
