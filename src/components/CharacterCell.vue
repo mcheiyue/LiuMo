@@ -8,7 +8,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   char: '',
   gridType: 'mizi',
-  showGrid: true
+  showGrid: false // Default to false for safety
 });
 
 const gridPath = computed(() => {
@@ -32,13 +32,20 @@ const gridPath = computed(() => {
 
 <template>
   <div 
-    class="relative w-24 h-24 box-border flex items-center justify-center bg-paper"
-    style="background-color: #F9F4E8;" 
+    class="relative w-24 h-24 flex items-center justify-center"
+    :style="{
+      width: '96px',
+      height: '96px',
+      backgroundColor: '#F9F4E8',
+      border: 'none',
+      boxSizing: 'border-box'
+    }"
   >
     <!-- Grid Layer (Internal lines only) -->
     <!-- Phase 5 Fix: Ensure SVG is strictly controlled by gridType/showGrid -->
     <svg 
       v-if="showGrid && gridType !== 'none'" 
+      :style="{ display: 'block' }"
       viewBox="0 0 100 100" 
       class="absolute inset-0 w-full h-full pointer-events-none opacity-30 stroke-cinnabar fill-none stroke-[1]"
       style="stroke: #B22222;"

@@ -60,7 +60,7 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
     const availPdfW = pageWidth - margin * 2;
     const availPdfH = pageHeight - margin * 2;
 
-    const scale = 2; // High DPI capture
+    const scale = 1.5; // Optimized for size/quality balance (was 2)
     const elW = element.offsetWidth;
     const elH = element.offsetHeight;
 
@@ -191,7 +191,7 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
           border: 'none',
           // Phase 7 Fix: Explicitly preserve critical styles that might be lost or overwritten
           // We read them from the original element to ensure consistency
-          backgroundColor: element.style.backgroundColor || 'rgba(178, 34, 34, 0.5)',
+          backgroundColor: element.style.backgroundColor || '#D58B85', // Force solid color
           direction: element.style.direction || 'ltr',
           rowGap: element.style.rowGap,
           columnGap: element.style.columnGap

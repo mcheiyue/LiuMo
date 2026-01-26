@@ -202,7 +202,7 @@ const gridStyle = computed(() => {
     direction: isVertical ? props.verticalColumnOrder : 'ltr',
     
     // Inline Styles for Export Fidelity (dom-to-image style loss fix)
-    backgroundColor: 'rgba(178, 34, 34, 0.5)', // #B22222 at 50% opacity (bg-cinnabar/50)
+    backgroundColor: '#D58B85', // Solid color mix: #F9F4E8 (bg) + #B22222 (fg) @ 50%
     
     // Phase 5 Fix: Ensure SVG strokes don't appear in 'lines-only' mode if logic fails
     // But SVG visibility is controlled by v-if. If v-if fails, we ensure style is clean.
@@ -233,15 +233,11 @@ defineExpose({
        
     <!-- Canvas Grid -->
     <!-- m-auto ensures safe centering: centers if smaller, aligns to start if larger/overflowing -->
-    <div 
-      ref="contentRef"
-      class="bg-cinnabar/50 shadow-2xl p-[1px] transition-all duration-300 ease-out m-auto"
-      :class="{ 
-        'border-none': borderMode === 'none', 
-        'p-0 bg-transparent': borderMode === 'none'
-      }"
-      :style="gridStyle"
-    >
+  <div 
+    ref="contentRef"
+    class="p-[1px] transition-all duration-300 ease-out m-auto"
+    :style="gridStyle"
+  >
       <!-- Phase 3: Inject Custom Font CSS for Export -->
       <component :is="'style'" v-if="fontFaceCss">{{ fontFaceCss }}</component>
       
