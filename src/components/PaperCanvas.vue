@@ -187,7 +187,8 @@ const gridStyle = computed(() => {
     
     // Flow direction
     gridAutoFlow: isVertical ? 'column' : 'row',
-    // NO direction here, handled by container
+    // Handled explicitly for PDF export compatibility
+    direction: isVertical ? props.verticalColumnOrder : 'ltr',
   };
 });
 

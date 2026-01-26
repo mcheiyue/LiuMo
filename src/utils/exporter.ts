@@ -49,7 +49,9 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
 
     // 3. Create PDF
     // A4 size: 595.28 x 841.89 pt
-    const pdf = new jsPDF('l', 'pt', 'a4');
+    const isPortrait = imgHeight > imgWidth;
+    const orientation = isPortrait ? 'p' : 'l';
+    const pdf = new jsPDF(orientation, 'pt', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     
