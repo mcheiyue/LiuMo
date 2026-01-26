@@ -68,7 +68,7 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
     const isVerticalText = options?.layoutDirection === 'vertical' || elW > elH * 1.5;
 
     // 3. Calculation for Pagination (Grid-Aware Slicing)
-    const CELL_SIZE = 96; // Must match PaperCanvas
+    // const CELL_SIZE = 96; // Removed unused
     // We need to know rows/cols to slice correctly.
     // Since we don't have direct access to props, we infer from dimensions
     // Assuming gap=1px roughly. 
@@ -98,7 +98,7 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
     
     const approxCellSize = 96;
     
-    let totalPages = 1;
+    // let totalPages = 1; // Removed unused
     let pages: { x: number, y: number, w: number, h: number }[] = [];
     let printScale = 1;
 
