@@ -237,6 +237,9 @@ defineExpose({
     ref="contentRef"
     class="p-[1px] transition-all duration-300 ease-out m-auto"
     :style="gridStyle"
+    :data-rows="gridDimensions.rows"
+    :data-cols="gridDimensions.cols"
+    :data-gap="gap"
   >
       <!-- Phase 3: Inject Custom Font CSS for Export -->
       <component :is="'style'" v-if="fontFaceCss">{{ fontFaceCss }}</component>

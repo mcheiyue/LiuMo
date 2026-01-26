@@ -99,7 +99,10 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
     // We need to cut at: N * (96 + gap) + padding?
     // The container has 1px padding (p-[1px]).
     
-    const approxCellSize = 96;
+    // Phase 8 Fix: Read actual grid configuration from DOM
+    const cellSize = 96; // Standard cell size (w-24 h-24)
+    const gapSize = parseInt(element.getAttribute('data-gap') || '1', 10);
+    const cellStride = cellSize + gapSize; // Actual step between cells
     
     // let totalPages = 1; // Removed unused
     let pages: { x: number, y: number, w: number, h: number }[] = [];
@@ -113,14 +116,13 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
       const fitWidthInPdf = availPdfW;
       const fitWidthInPx = fitWidthInPdf / printScale;
       
-      // Phase 6 Fix: Conservative Slicing
-      // Use floor to ensure we don't slice mid-column.
-      // approxCellSize + 1 covers cell + gap.
-      // We subtract a tiny buffer (0.1) to handle floating point precision issues.
-      const colsPerPage = Math.floor((fitWidthInPx - 0.1) / (approxCellSize + 1));
+      // Phase 8 Fix: Use actual cellStride for accurate slicing
+      // Subtract padding (1px on each side = 2px total) from available space
+      const availableWidth = fitWidthInPx - 2;
+      const colsPerPage = Math.floor(availableWidth / cellStride);
       
-      // Slice width
-      const sliceW = colsPerPage * (approxCellSize + 1);
+      // Slice width: exact multiples of cellStride, plus padding
+      const sliceW = colsPerPage * cellStride + 2;
       
       // Total Width
       const totalW = elW;
@@ -150,9 +152,10 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
       printScale = availPdfW / elW; // Width matches page width
       const fitHeightInPx = availPdfH / printScale;
       
-      // Phase 6 Fix: Conservative Slicing for Rows
-      const rowsPerPage = Math.floor((fitHeightInPx - 0.1) / (approxCellSize + 1));
-      const sliceH = rowsPerPage * (approxCellSize + 1);
+      // Phase 8 Fix: Use actual cellStride for accurate slicing
+      const availableHeight = fitHeightInPx - 2; // Subtract padding
+      const rowsPerPage = Math.floor(availableHeight / cellStride);
+      const sliceH = rowsPerPage * cellStride + 2; // Include padding
       
       let currentTop = 0;
       while (currentTop < elH) {
@@ -182,6 +185,14 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
         height: p.h * scale,
         quality: 1,
         bgcolor: '#F9F4E8',
+        filter: (node: HTMLElement) => {
+          // Phase 8 Fix: Remove text-stroke that appears during export in Tauri WebView
+          if (node.style) {
+            node.style.webkitTextStroke = '';
+            node.style.textStroke = '';
+          }
+          return true;
+        },
         style: {
           transform: `scale(${scale}) translate(${-p.x}px, ${-p.y}px)`,
           transformOrigin: 'top left',
