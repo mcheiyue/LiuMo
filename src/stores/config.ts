@@ -74,6 +74,6 @@ export const useConfigStore = defineStore('config', () => {
       'smartSnap', 
       'fixedGrid'
     ]
-  }
+  } as any
 });
 
