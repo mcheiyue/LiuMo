@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CharacterCell from './CharacterCell.vue';
-import { ref, computed, watchEffect } from 'vue';
+import { ref, computed } from 'vue';
 import { useElementSize } from '@vueuse/core';
 
 const props = withDefaults(defineProps<{
@@ -170,7 +170,7 @@ const gridStyle = computed(() => {
   // If vertical:
   // - 'rtl' (Traditional): Columns flow Right to Left.
   // - 'ltr' (Modern Vertical): Columns flow Left to Right.
-  const dir = isVertical ? props.verticalColumnOrder : 'ltr';
+  // const dir = isVertical ? props.verticalColumnOrder : 'ltr';
 
   return {
     display: 'grid',

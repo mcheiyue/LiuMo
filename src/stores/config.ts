@@ -55,27 +55,6 @@ export const useConfigStore = defineStore('config', () => {
     updateText
   };
 }, {
-  persist: {
-    // pinia-plugin-persistedstate usually replaces the whole state.
-    // If we add new fields, they will be undefined for existing users.
-    // We can use the 'afterRestore' hook or similar if using the advanced plugin, 
-    // or simply check and patch in the component/store.
-    // But a simpler way for a setup store is to manually check defaults on init? 
-    // No, init runs, then persist plugin overwrites it.
-    
-    // Simplest fix: return a merged state? 
-    // No, let's fix it by manually checking 'fixedGrid' validity in the return object 
-    // or using a specific hydration strategy if the plugin supports it.
-    // Assuming standard pinia-plugin-persistedstate:
-    // It does NOT support deep merge by default unless configured.
-    // But we can just handle the potential undefined in the components (PaperCanvas.vue)
-    // AND we can add a simple check here to ensuring it's not undefined in the store itself?
-    // Actually, we can't easily intercept the restore in the setup function body easily 
-    // because restore happens *after* setup.
-    
-    // So the robustness MUST be in the components consuming it.
-    // OR we can add a watcher to initialize it if missing?
-    paths: ['text', 'currentFont', 'layoutDirection', 'borderMode', 'gridType', 'smartSnap', 'fixedGrid'],
-  }
+  persist: true
 });
 
