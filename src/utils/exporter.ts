@@ -185,11 +185,11 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
         height: p.h * scale,
         quality: 1,
         bgcolor: '#F9F4E8',
-        filter: (node: HTMLElement) => {
+        filter: (node: Node) => {
           // Phase 8 Fix: Remove text-stroke that appears during export in Tauri WebView
-          if (node.style) {
-            node.style.webkitTextStroke = '';
-            node.style.textStroke = '';
+          if (node instanceof HTMLElement && node.style) {
+            (node.style as any).webkitTextStroke = '';
+            // textStroke is not a standard property, skip it
           }
           return true;
         },
