@@ -19,17 +19,40 @@ pub struct Poetry {
     pub type_: String,
 }
 
-// Initialize the database (extract from binary if empty)
+// Initialize the database (extract from binary if empty OR version mismatch)
 pub fn init_db(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let app_data_dir = app.path().app_data_dir()?;
     if !app_data_dir.exists() {
         std::fs::create_dir_all(&app_data_dir)?;
     }
-    let db_path = app_data_dir.join("liumo.db");
     
-    // Check if DB exists
+    let db_path = app_data_dir.join("liumo.db");
+    let version_path = app_data_dir.join("liumo.db.version");
+    
+    let current_version = app.package_info().version.to_string();
+    let mut should_extract = false;
+
+    // 1. Check if DB exists
     if !db_path.exists() {
-        println!("Database not found at {:?}. Extracting from embedded binary...", db_path);
+        println!("Database missing. Marking for extraction.");
+        should_extract = true;
+    } 
+    // 2. Check version marker
+    else if version_path.exists() {
+        let saved_version = std::fs::read_to_string(&version_path)?.trim().to_string();
+        if saved_version != current_version {
+            println!("Database version mismatch (Saved: {}, Current: {}). Updating...", saved_version, current_version);
+            should_extract = true;
+        }
+    } 
+    // 3. No version file but DB exists (legacy case), force update to be safe
+    else {
+        println!("Database exists but no version marker. Forcing update to ensure consistency.");
+        should_extract = true;
+    }
+
+    if should_extract {
+        println!("Extracting embedded database to {:?}", db_path);
         
         // Decompress from MEMORY (embedded bytes) to DISK
         let cursor = Cursor::new(DB_GZ_BYTES);
@@ -38,12 +61,14 @@ pub fn init_db(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         let mut writer = BufWriter::new(output);
         
         std::io::copy(&mut decoder, &mut writer)?;
-        
-        // Flush ensures all data is written
         writer.flush()?;
-        println!("✅ Database successfully extracted to {:?}", db_path);
+        
+        // Write version marker
+        std::fs::write(&version_path, &current_version)?;
+        
+        println!("✅ Database successfully extracted and version marked as {}", current_version);
     } else {
-        println!("Database found at {:?}", db_path);
+        println!("Database is up to date (v{}).", current_version);
     }
 
     Ok(())
