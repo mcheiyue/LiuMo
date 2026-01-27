@@ -126,9 +126,6 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
         // Single page, no slicing
         pages.push({ x: 0, y: 0, w: elW, h: elH });
       } else {
-        // Slice width: exact multiples of cellStride
-        const sliceW = colsPerPage * cellStride;
-        
         // Total Width
         const totalW = elW;
         
@@ -171,8 +168,6 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
         // Single page, no slicing
         pages.push({ x: 0, y: 0, w: elW, h: elH });
       } else {
-        const sliceH = rowsPerPage * cellStride;
-        
         let currentTop = 0;
         let remainingRows = totalRows;
         
