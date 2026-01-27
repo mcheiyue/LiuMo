@@ -26,19 +26,6 @@ const props = withDefaults(defineProps<{
 const containerRef = ref<HTMLElement | null>(null);
 const { width: containerWidth, height: containerHeight } = useElementSize(containerRef);
 
-// Helper to calc page capacity (Screen Page Size)
-const pageCapacity = computed(() => {
-   const padding = 64;
-   const w = Math.max(0, (containerWidth.value || 1000) - padding);
-   const h = Math.max(0, (containerHeight.value || 800) - padding);
-   // Gap approx 1px for full grid, 0 for none. Assume 1px safety.
-   const size = CELL_SIZE + 1;
-   return {
-     cols: Math.floor(w / size),
-     rows: Math.floor(h / size)
-   };
-});
-
 // Layout Calculation
 const layoutConfig = computed<LayoutConfig>(() => {
   return {
