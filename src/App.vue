@@ -1,6 +1,7 @@
+<script setup lang="ts">
 import { ref } from 'vue';
 import { useConfigStore } from './stores/config';
-import PaperCanvas from './components/PaperCanvasNext.vue'; // Direct replacement
+import PaperCanvas from './components/PaperCanvas.vue'; // Direct replacement
 import FontDropZone from './components/FontDropZone.vue';
 import PoetrySelector from './components/PoetrySelector.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
