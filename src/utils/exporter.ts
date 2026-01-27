@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 
-import { type LayoutConfig } from './layoutEngine';
+import { type LayoutConfig, CELL_SIZE } from './layoutEngine';
 import PdfWorker from '../workers/pdf.worker?worker';
 
 /**
