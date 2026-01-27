@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useConfigStore } from '../stores/config';
+import { runPdfPoc } from '../utils/pdfPoc';
+import { exportPdfVector } from '../utils/exporter';
 
 const config = useConfigStore();
 
@@ -166,6 +168,7 @@ const gridOptions = [
             </button>
           </div>
         </div>
+
       </div>
       
       <div class="p-4 bg-base-100 border-t border-base-200 flex justify-end">
