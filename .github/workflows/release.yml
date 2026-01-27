@@ -30,6 +30,10 @@ jobs:
       - name: Install Frontend Dependencies
         run: bun install
 
+      # [AI-NOTE] 关键检查点：
+      # 此步骤运行 extract_changelog.js 从 CHANGELOG.md 提取日志。
+      # 在推送 Tag 前，必须确保 CHANGELOG.md 已更新且包含当前版本的说明！
+      # 否则 Release 的 body 将为空。
       - name: Extract Release Notes
         id: extract_notes
         run: bun run scripts/extract_changelog.js
