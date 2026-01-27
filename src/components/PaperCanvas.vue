@@ -2,7 +2,7 @@
 import CharacterCell from './CharacterCell.vue';
 import { ref, computed, watch, nextTick } from 'vue';
 import { useElementSize } from '@vueuse/core';
-import { calculateGridDimensions, calculateLayout, CELL_SIZE, type LayoutConfig, type CellData } from '../utils/layoutEngine';
+import { calculateGridDimensions, calculateLayout, CELL_SIZE, type LayoutConfig } from '../utils/layoutEngine';
 
 const props = withDefaults(defineProps<{
   text: string;
@@ -14,7 +14,6 @@ const props = withDefaults(defineProps<{
   smartSnap?: boolean;
   fixedGrid?: { enabled: boolean; rows: number; cols: number };
   fontFaceCss?: string;
-  viewMode?: 'continuous' | 'paged';
 }>(), {
   gridType: 'mizi',
   borderMode: 'full',
@@ -22,35 +21,10 @@ const props = withDefaults(defineProps<{
   verticalColumnOrder: 'rtl',
   smartSnap: true,
   fixedGrid: () => ({ enabled: false, rows: 10, cols: 6 }),
-  viewMode: 'continuous'
 });
 
 const containerRef = ref<HTMLElement | null>(null);
 const { width: containerWidth, height: containerHeight } = useElementSize(containerRef);
-
-// CRITICAL FIX for Vertical Layout:
-// useElementSize returns VIEWPORT size, not content size.
-// In Vertical mode with horizontal scroll, containerWidth is capped at viewport width.
-// This causes gridDimensions to underestimate cols, leading to truncated red background.
-// SOLUTION: Use a fixed/large reference dimension for Vertical, ignore containerWidth.
-
-const effectiveContainerWidth = computed(() => {
-   if (props.layoutDirection === 'vertical') {
-       // Vertical: Ignore viewport width. Use a large reference (or calculate from text length).
-       // We'll let layoutDimensions handle the expansion properly.
-       return 100000; // Arbitrarily large to prevent clamping
-   } else {
-       return containerWidth.value || 1000;
-   }
-});
-
-const effectiveContainerHeight = computed(() => {
-   if (props.layoutDirection === 'horizontal') {
-       return 100000; // Same logic for horizontal overflow
-   } else {
-       return containerHeight.value || 800;
-   }
-});
 
 // Helper to calc page capacity (Screen Page Size)
 const pageCapacity = computed(() => {
@@ -67,34 +41,21 @@ const pageCapacity = computed(() => {
 
 // Layout Calculation
 const layoutConfig = computed<LayoutConfig>(() => {
-  // In Paged Mode, force fixed grid based on screen capacity (simulate pagination)
-  let activeFixedGrid = props.fixedGrid;
-  
-  if (props.viewMode === 'paged') {
-     // If user hasn't forced a manual grid, use "Screen Capacity" as the page size
-     if (!props.fixedGrid?.enabled) {
-         activeFixedGrid = {
-             enabled: true,
-             rows: Math.max(1, pageCapacity.value.rows),
-             cols: Math.max(1, pageCapacity.value.cols)
-         };
-     }
-  }
-
   return {
       layoutDirection: props.layoutDirection,
       verticalColumnOrder: props.verticalColumnOrder,
       borderMode: props.borderMode,
       smartSnap: props.smartSnap,
-      fixedGrid: activeFixedGrid
+      fixedGrid: props.fixedGrid
   };
 });
+
 
 const gridDimensions = computed(() => {
   return calculateGridDimensions(
     props.text,
-    effectiveContainerWidth.value, // Use effective dimensions to avoid viewport capping
-    effectiveContainerHeight.value,
+    containerWidth.value || 1000,
+    containerHeight.value || 800,
     64, // PADDING = 64
     layoutConfig.value
   );
@@ -104,27 +65,28 @@ const gridDimensions = computed(() => {
 const layoutDimensions = computed(() => {
   const dims = { ...gridDimensions.value };
   
-  // Only expand dimensions if in Continuous Mode
-  if (props.viewMode === 'continuous') {
-      // Ensure we have at least 1 char length to avoid division by zero or empty grid
-      const len = Math.max(props.text.length, 1);
-      
-      if (props.layoutDirection === 'vertical') {
-          // Vertical: Rows fixed to screen height, Cols expand
-          const neededCols = Math.ceil(len / Math.max(1, dims.rows));
-          dims.cols = Math.max(dims.cols, neededCols);
-      } else {
-          // Horizontal: Cols fixed to screen width, Rows expand
-          const neededRows = Math.ceil(len / Math.max(1, dims.cols));
-          dims.rows = Math.max(dims.rows, neededRows);
-      }
-  }
-  // For 'paged' mode, we strictly respect gridDimensions (which represents ONE PAGE)
+  // Always expand dimensions (Continuous Mode only now)
+  // Ensure we have at least 1 char length to avoid division by zero or empty grid
+  const len = Math.max(props.text.length, 1);
   
+  if (props.layoutDirection === 'vertical') {
+      // Vertical: Rows fixed to screen height, Cols expand
+      // Fix: Use exact needed columns to avoid huge empty space
+      const neededCols = Math.ceil(len / Math.max(1, dims.rows));
+      // CRITICAL FIX: Ensure at least Screen Cols to fill viewport, but expand if text is longer
+      dims.cols = Math.max(dims.cols, neededCols);
+  } else {
+      // Horizontal: Cols fixed to screen width, Rows expand
+      const neededRows = Math.ceil(len / Math.max(1, dims.cols));
+      dims.rows = Math.max(dims.rows, neededRows);
+  }
+
   return dims;
 });
 
+
 const layoutData = computed(() => {
+
   return calculateLayout(
     props.text,
     layoutDimensions.value, // Use expanded dimensions
@@ -132,25 +94,14 @@ const layoutData = computed(() => {
   );
 });
 
-// Group by Page
-const pages = computed(() => {
-  if (props.viewMode !== 'paged') return [];
-  
-  // Group cells by pageIndex
-  const groups: CellData[][] = [];
-  layoutData.value.forEach(cell => {
-      if (!groups[cell.pageIndex]) groups[cell.pageIndex] = [];
-      groups[cell.pageIndex].push(cell);
-  });
-  return groups;
+const shouldShowBorder = computed(() => {
+  return props.borderMode !== 'none';
 });
 
   // Canvas Size Calculation
   const canvasStyle = computed(() => {
-  const isPaged = props.viewMode === 'paged';
-  // If Paged Mode, use the dimensions of a SINGLE PAGE (gridDimensions)
-  // If Continuous Mode, use the EXPANDED dimensions (layoutDimensions)
-  const dims = isPaged ? gridDimensions.value : layoutDimensions.value;
+  // Always Continuous Mode
+  const dims = layoutDimensions.value;
   
   const { cols, rows, gap } = dims; 
   const isVertical = props.layoutDirection === 'vertical';
@@ -191,8 +142,6 @@ const pages = computed(() => {
       }
       
       // Add gap buffer to the extent
-      // If the last cell is at maxRight, we might want one last gap? No.
-      // But we definitely need to cover it.
       widthPx = Math.max(widthPx, maxRight);
       heightPx = Math.max(heightPx, maxBottom);
   }
@@ -233,77 +182,34 @@ watch(
 </script>
 
 <template>
-  <!-- Outer Scroll Container -->
-  <!-- FORCE LTR direction to avoid browser inconsistencies with RTL scrolling -->
-  <div 
-    ref="containerRef"
-    class="bg-stone-200 w-full h-full absolute inset-0 flex p-8"
-    :class="layoutDirection === 'vertical' ? 'overflow-x-auto' : 'overflow-y-auto'"
-    style="direction: ltr;"
-  >
-    <!-- Relative Canvas (Continuous) -->
+  <div class="w-full h-full overflow-auto flex justify-center p-8 bg-stone-300 relative" ref="containerRef">
+    <!-- Continuous Scroll Mode -->
     <div 
-      v-if="viewMode === 'continuous'"
-      class="relative transition-all duration-300 ease-out m-auto shadow-lg flex-shrink-0"
-      :style="canvasStyle"
+        class="bg-white shadow-lg relative transition-all duration-300 ease-in-out border border-stone-200"
+        :style="canvasStyle"
     >
-      <!-- Font Injection -->
-      <component :is="'style'" v-if="fontFaceCss">{{ fontFaceCss }}</component>
-
-      <!-- Cells -->
       <CharacterCell 
         v-for="(cell, index) in layoutData" 
-        :key="index"
+        :key="`${cell.char}-${index}`"
         :char="cell.char"
+        :size="cell.size"
+        :font-family="fontFamily"
         :grid-type="gridType"
-        :show-grid="borderMode === 'full'" 
-        class="bg-paper"
+        :show-grid="props.borderMode === 'full'"
+        grid-color="#B22222"
+        :show-border="shouldShowBorder"
         :style="{
-          position: 'absolute',
-          left: `${cell.x}px`,
-          top: `${cell.y}px`,
-          width: `${cell.size}px`,
-          height: `${cell.size}px`
+            position: 'absolute',
+            left: `${cell.x}px`,
+            top: `${cell.y}px`,
+            width: `${cell.size}px`,
+            height: `${cell.size}px`,
+            // Fix: Remove transition for infinite scroll to prevent janky reflows on typing
+            // transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)' 
         }"
       />
+      <!-- Grid Overlay / Background could be drawn here if needed globally -->
     </div>
 
-    <!-- Paged View -->
-    <div v-else class="flex flex-col gap-8 items-center py-8 w-full">
-       <component :is="'style'" v-if="fontFaceCss">{{ fontFaceCss }}</component>
-       
-       <div 
-         v-for="(pageCells, pIdx) in pages" 
-         :key="pIdx"
-         class="relative bg-white shadow-lg transition-all duration-300 ease-out flex-shrink-0"
-         :style="canvasStyle" 
-       >
-          <!-- 
-            canvasStyle calculates width/height based on gridDimensions.
-            In Paged Mode, gridDimensions represents ONE PAGE. 
-            So this works perfectly. 
-          -->
-          <CharacterCell 
-            v-for="(cell, index) in pageCells" 
-            :key="index"
-            :char="cell.char"
-            :grid-type="gridType"
-            :show-grid="borderMode === 'full'" 
-            class="bg-paper"
-            :style="{
-              position: 'absolute',
-              left: `${cell.x}px`,
-              top: `${cell.y}px`,
-              width: `${cell.size}px`,
-              height: `${cell.size}px`
-            }"
-          />
-          
-          <!-- Page Number -->
-          <div class="absolute -bottom-6 left-0 right-0 text-center text-xs text-stone-400">
-            第 {{ pIdx + 1 }} 页
-          </div>
-       </div>
-    </div>
   </div>
 </template>
