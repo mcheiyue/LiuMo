@@ -217,7 +217,20 @@ export function calculateLayout(
     // Visual Column Index
     let visualColIdx = colIdx;
     if (isVertical && isRtl) {
-      visualColIdx = (cols - 1) - colIdx;
+      if (isInfinite) {
+          // In Infinite Mode (Vertical), "cols" is the TOTAL columns.
+          // Calculate visual index from the right end of the total scrollable area.
+          // Note: "cols" here is dynamic (calculated above as neededCols).
+          // But "grid.cols" might be the updated one?
+          // calculateGridDimensions updates "cols" to be huge if isInfinite? 
+          // No, calculateLayout calculates `neededCols`.
+          // We need `totalCols` to flip correctly.
+          const totalCols = Math.ceil(totalCells / rows);
+          visualColIdx = (totalCols - 1) - colIdx;
+      } else {
+          // Paged Mode: Flip within the page
+          visualColIdx = (cols - 1) - colIdx;
+      }
     }
     
     // Visual Row Index (always top to bottom)

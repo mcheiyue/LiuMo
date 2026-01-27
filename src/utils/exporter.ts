@@ -1,6 +1,6 @@
 // import domtoimage from 'dom-to-image-more'; // Removed
 import jsPDF from 'jspdf';
-import { save } from '@tauri-apps/plugin-dialog';
+import { save, ask } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 
 import { type LayoutConfig, CELL_SIZE } from './layoutEngine';
@@ -270,8 +270,4 @@ export async function exportPdfVector(
     alert(`导出失败！\n错误信息: ${e.message || e}`);
     throw e;
   }
-}
-
-export interface ExportOptions {
-  layoutDirection: 'vertical' | 'horizontal'; // 'vertical' means vertical text (horizontal scroll), 'horizontal' means horizontal text (vertical scroll)
 }

@@ -185,7 +185,7 @@ watch(
   <div class="w-full h-full overflow-auto flex justify-center p-8 bg-stone-300 relative" ref="containerRef">
     <!-- Continuous Scroll Mode -->
     <div 
-        class="bg-white shadow-lg relative transition-all duration-300 ease-in-out border border-stone-200"
+        class="bg-white shadow-lg relative transition-all duration-300 ease-in-out border border-stone-200 shrink-0"
         :style="canvasStyle"
     >
       <CharacterCell 

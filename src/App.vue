@@ -11,7 +11,6 @@ const config = useConfigStore();
 const showPoetrySelector = ref(false);
 const showSettings = ref(false);
 const isExporting = ref(false);
-const viewMode = ref<'continuous' | 'paged'>('continuous'); // Default to continuous
 
 function onFontLoaded(fontName: string) {
   // Update the reactive font variable to only affect the canvas
@@ -63,26 +62,7 @@ async function handleExport() {
       </div>
       
       <div class="flex gap-2 items-center">
-         <!-- View Mode Toggle -->
-         <div class="join join-horizontal mr-2">
-           <button 
-             class="btn btn-sm join-item"
-             :class="viewMode === 'continuous' ? 'btn-neutral text-white' : 'btn-ghost text-stone-500'"
-             @click="viewMode = 'continuous'"
-             title="连续滚动模式"
-           >
-             📜 卷轴
-           </button>
-           <button 
-             class="btn btn-sm join-item"
-             :class="viewMode === 'paged' ? 'btn-neutral text-white' : 'btn-ghost text-stone-500'"
-             @click="viewMode = 'paged'"
-             title="分页预览模式"
-           >
-             📄 打印
-           </button>
-         </div>
-
+         
          <button class="btn btn-sm btn-ghost text-inkstone" @click="showPoetrySelector = true">📚 诗词库</button>
          <button class="btn btn-sm btn-ghost text-inkstone" @click="showSettings = true">⚙️ 设置</button>
          <button 
@@ -106,7 +86,6 @@ async function handleExport() {
         :smart-snap="config.smartSnap"
         :fixed-grid="config.fixedGrid"
         :font-face-css="config.fontFaceCss"
-        :view-mode="viewMode"
       />
     </main>
   </div>
