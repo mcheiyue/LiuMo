@@ -3,8 +3,8 @@ import jsPDF from 'jspdf';
 import { save, ask } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 
-import { calculateLayout, CELL_SIZE, type LayoutConfig } from './layoutEngine';
-// import { subsetFont } from './fontSubsetting';
+import { type LayoutConfig, CELL_SIZE } from './layoutEngine';
+import PdfWorker from '../workers/pdf.worker?worker';
 
 /**
  * Extract Base64 font data from CSS string
@@ -12,6 +12,26 @@ import { calculateLayout, CELL_SIZE, type LayoutConfig } from './layoutEngine';
 function extractBase64FromCss(css: string): string | null {
   const match = css.match(/base64,([^'"]+)/);
   return match ? match[1] : null;
+}
+
+// Helper: Convert Base64 to ArrayBuffer
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  try {
+      // Remove data URI scheme if present (e.g., data:font/ttf;base64,)
+      const base64Clean = base64.replace(/^data:.*,/, '').replace(/[\r\n\s]/g, '');
+      const binary_string = window.atob(base64Clean);
+      const len = binary_string.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary_string.charCodeAt(i);
+      }
+      return bytes.buffer;
+  } catch (e) {
+      console.error("base64ToArrayBuffer failed:", e);
+      // Return empty buffer instead of throwing to allow fallback to default font in Worker if needed?
+      // But if we fail here, font is likely corrupted.
+      throw new Error("Font data processing failed: " + (e instanceof Error ? e.message : String(e)));
+  }
 }
 
 // Helper: Convert Blob to Base64
@@ -22,42 +42,6 @@ function blobToBase64(blob: Blob): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
-}
-
-// --- Grid Drawing Helpers ---
-function drawMizi(doc: jsPDF, x: number, y: number, size: number) {
-  doc.setLineDashPattern([0.5, 0.5], 0); // Fine dash
-  doc.setDrawColor(213, 139, 133); // #D58B85
-  
-  // Cross (+)
-  doc.line(x, y + size/2, x + size, y + size/2); 
-  doc.line(x + size/2, y, x + size/2, y + size); 
-  
-  // Diagonals (X)
-  doc.line(x, y, x + size, y + size);
-  doc.line(x + size, y, x, y + size);
-  
-  doc.setLineDashPattern([], 0); // Reset
-}
-
-function drawTianzi(doc: jsPDF, x: number, y: number, size: number) {
-  doc.setLineDashPattern([0.5, 0.5], 0);
-  doc.setDrawColor(213, 139, 133); // #D58B85
-  
-  doc.line(x, y + size/2, x + size, y + size/2);
-  doc.line(x + size/2, y, x + size/2, y + size);
-  
-  doc.setLineDashPattern([], 0);
-}
-
-function drawHuigong(doc: jsPDF, x: number, y: number, size: number) {
-  const padding = size * 0.25;
-  const innerSize = size * 0.5;
-  
-  doc.setLineDashPattern([0.5, 0.5], 0);
-  doc.setDrawColor(213, 139, 133); // #D58B85
-  doc.rect(x + padding, y + padding, innerSize, innerSize);
-  doc.setLineDashPattern([], 0);
 }
 
 export async function exportPdfVector(
@@ -121,55 +105,40 @@ export async function exportPdfVector(
     const contentH = pageHeight - margin * 2;
 
     // 2. Font Handling
-    // let activeFontName = 'helvetica'; // Default fallback
+    // We prepare the base64 string here, but actual registration happens in Worker
+    let pureBase64: string | null = null;
     
-    if (finalFontBase64) { // Use finalFontBase64
+    if (finalFontBase64) { 
       console.log("[Vector Export] Processing font...");
       
-      // FIX: Extract pure Base64 from the CSS string OR use raw if it's already pure
-      let pureBase64 = extractBase64FromCss(finalFontBase64);
+      // Try extracting from CSS url()
+      pureBase64 = extractBase64FromCss(finalFontBase64);
+      
+      // If not in url(), check if it is a raw data URI or raw base64
       if (!pureBase64) {
-          // Maybe it's already pure (from built-in load)?
-          // Built-in load returns "data:font/ttf;base64,..." ?
-          // blobToBase64 returns Data URL. So extractBase64FromCss works.
-          // Check if it's raw base64?
-          if (!finalFontBase64.startsWith('data:')) {
+          if (finalFontBase64.startsWith('data:')) {
+             pureBase64 = finalFontBase64;
+          } else if (finalFontBase64.length > 100) {
+             // Assume it's raw base64
              pureBase64 = finalFontBase64;
           }
       }
       
-      if (pureBase64) {
-          const fontName = "CustomFont";
-          try {
-            // ... (Subsetting logic commented out for now) ...
-            
-            // FALLBACK: Use Full Font directly
-            doc.addFileToVFS('custom.ttf', pureBase64);
-            doc.addFont('custom.ttf', fontName, 'normal');
-            doc.setFont(fontName);
-            // activeFontName = fontName;
-            
-            console.log(`[Vector Export] Custom font registered. Length: ${(pureBase64.length/1024/1024).toFixed(2)}MB`);
-          } catch (e) {
-            console.error("Font registration failed:", e);
-          }
-      } else {
+      if (!pureBase64) {
           console.warn("[Vector Export] Could not extract Base64 from CSS string.");
+          alert("字体数据异常，可能导致导出字体丢失。");
       }
     } else {
       console.warn("[Vector Export] No font provided, using default.");
     }
 
-    // 3. Layout Configuration (Map Store to Engine Config)
-    const isVertical = configStore.layoutDirection === 'vertical'; // Defined here!
-
     const layoutConfig: LayoutConfig = {
       layoutDirection: configStore.layoutDirection,
       verticalColumnOrder: configStore.verticalColumnOrder,
       borderMode: configStore.borderMode,
-      smartSnap: false, // For PDF, we enforce page fitting usually? Or respect smart snap?
-                        // Let's disable smartSnap for PDF pagination for now to ensure predictable grids
-      fixedGrid: configStore.fixedGrid
+      smartSnap: false,
+      // Deep clone fixedGrid to remove Vue Reactivity Proxies which cause DataCloneError in postMessage
+      fixedGrid: configStore.fixedGrid ? JSON.parse(JSON.stringify(configStore.fixedGrid)) : undefined
     };
 
     // 4. Calculate Page Capacity
@@ -219,133 +188,82 @@ export async function exportPdfVector(
         throw new Error(`Invalid Grid Calculation: ${rowsPerPage}x${colsPerPage}`);
     }
 
-    // 5. Calculate FULL Layout
-    const layoutDimensions = {
-        rows: isVertical ? rowsPerPage : 999999,
-        cols: isVertical ? 999999 : colsPerPage,
-        gap: 0,
-        usableWidth: 0, 
-        usableHeight: 0
+    // 5. Calculate FULL Layout & Render in Worker
+    // We delegate the heavy lifting (Layout + Subsetting + Rendering) to the Web Worker
+    
+    // Prepare Grid Config
+    const gridConfig = {
+        rowsPerPage,
+        colsPerPage,
+        scale,
+        gridType: configStore.gridType
     };
     
-    const cells = calculateLayout(
-        configStore.text || "",
-        layoutDimensions,
-        layoutConfig
-    );
-    
-    console.log(`[Vector Export] Generated ${cells.length} cells.`);
-
-    // 6. Render to PDF
-    const pxToMm = (px: number) => (px / MM_TO_PX) * scale;
-    const cellMM = pxToMm(CELL_SIZE);
-    
-    cells.forEach((cell, index) => {
-      // Calculate Page Index
-      let pIndex = 0;
-      let visualColOnPage = 0;
-      let visualRowOnPage = 0;
-      
-      if (layoutConfig.layoutDirection === 'vertical') {
-         pIndex = Math.floor(cell.colIndex / colsPerPage);
-         visualColOnPage = cell.colIndex % colsPerPage;
-         visualRowOnPage = cell.rowIndex;
-         
-         if (configStore.verticalColumnOrder === 'rtl') {
-            visualColOnPage = (colsPerPage - 1) - visualColOnPage;
-         }
-      } else {
-         pIndex = Math.floor(cell.rowIndex / rowsPerPage);
-         visualRowOnPage = cell.rowIndex % rowsPerPage;
-         visualColOnPage = cell.colIndex;
-      }
-      
-      // Safety Cap: Don't generate too many pages
-      if (pIndex > 200) {
-          if (index % 1000 === 0) console.warn(`[Vector Export] Page count exceeding 200...`);
-          return; // Stop rendering
-      }
-      
-      while (doc.getNumberOfPages() <= pIndex) {
-        doc.addPage();
-      }
-      doc.setPage(pIndex + 1);
-      
-      const x = margin + visualColOnPage * cellMM;
-      const y = margin + visualRowOnPage * cellMM;
-      
-      // Draw Grid
-      doc.setDrawColor(213, 139, 133); // #D58B85
-      doc.setLineWidth(0.1);
-      
-      if (layoutConfig.borderMode === 'full') {
-         // Outer Box
-         doc.rect(x, y, cellMM, cellMM);
-         
-         // Inner Grid Styles
-         const gridType = configStore.gridType;
-         if (gridType === 'mizi') drawMizi(doc, x, y, cellMM);
-         else if (gridType === 'tianzi') drawTianzi(doc, x, y, cellMM);
-         else if (gridType === 'huigong') drawHuigong(doc, x, y, cellMM);
-         
-      } else if (layoutConfig.borderMode === 'lines-only') {
-         // Draw underline only? 
-         if (layoutConfig.layoutDirection === 'vertical') {
-             // Vertical text: lines between columns (vertical lines)
-             doc.line(x, y, x, y + cellMM);
-         } else {
-             // Horizontal text: lines between rows (underlines)
-             doc.line(x, y + cellMM, x + cellMM, y + cellMM); 
-         }
-      }
-      
-      // Draw Text
-      if (cell.char && cell.char.trim()) {
-        // Adjust font size ratio: 0.7 -> 0.55 for better breathing room
-        const fontRatio = 0.55; 
-        const fontSizePt = cellMM * 2.83 * fontRatio; 
-        doc.setFontSize(fontSizePt);
+    // 6. Spawn Worker
+    return new Promise((resolve, reject) => {
+        console.log("[Vector Export] Spawning Worker...");
+        const worker = new PdfWorker();
         
-        // Manual X Centering (more reliable than align: 'center')
-        const charWidth = doc.getTextWidth(cell.char);
-        const textX = x + (cellMM - charWidth) / 2;
+        worker.onmessage = async (e) => {
+            console.log("[Vector Export] Message received from Worker", e.data);
+            const { success, pdfBuffer, error } = e.data;
+            
+            if (success && pdfBuffer) {
+                try {
+                    console.log("[Vector Export] Writing file to disk...");
+                    await writeFile(filePath, new Uint8Array(pdfBuffer));
+                    console.log("[Vector Export] Write success.");
+                    alert(`导出成功！\n文件已保存至: ${filePath}\n大小: ${(pdfBuffer.byteLength / 1024).toFixed(2)} KB`);
+                    resolve(true);
+                } catch (writeErr: any) {
+                    console.error("Write failed:", writeErr);
+                    alert(`保存文件失败: ${writeErr.message}`);
+                    reject(writeErr);
+                }
+            } else {
+                console.error("Worker failed:", error);
+                alert(`导出失败 (Worker): ${error}`);
+                reject(new Error(error));
+            }
+            worker.terminate();
+        };
         
-        // Manual Y Centering
-        // Using standard alphabetic baseline logic
-        // Visual center ~ y + cellMM/2 + fontSize/3
-        // Let's verify: 
-        // If cell is 20mm. Font is 11mm. 
-        // Middle is 10mm. 
-        // To center visually, baseline should be around 10 + 11/2 - descender?
-        // Usually baseline is at ~80% of font height from top of font box.
-        // Let's try: y + (cellMM + fontSizeMm * 0.7) / 2
-        // fontSizeMm = cellMM * fontRatio
+        worker.onerror = (err) => {
+            console.error("Worker error:", err);
+            alert(`导出进程错误: ${err.message}`);
+            worker.terminate();
+            reject(err);
+        };
         
-        // Formula: y + (cellMM / 2) + (fontSizeMm / 3) roughly centers vertically
-        const fontSizeMm = cellMM * fontRatio;
-        const textY = y + (cellMM / 2) + (fontSizeMm / 2.8);
-
+        // Prepare Font Buffer
+        let fontBuffer: ArrayBuffer;
         try {
-            doc.text(cell.char, textX, textY, {
-                baseline: 'alphabetic' // Use default baseline
-            });
-        } catch (e) {
-            // Log once
-            if (index === 0) console.error("doc.text failed:", e);
+            if (pureBase64) {
+                 fontBuffer = base64ToArrayBuffer(pureBase64);
+                 console.log(`[Vector Export] Font buffer prepared. Size: ${(fontBuffer.byteLength/1024).toFixed(2)} KB`);
+            } else {
+                 console.warn("[Vector Export] No font buffer available.");
+                 fontBuffer = new ArrayBuffer(0);
+            }
+        } catch (e: any) {
+            console.error("Font buffer preparation failed:", e);
+            alert("字体数据处理失败，请重试。");
+            reject(e);
+            return;
         }
-      }
+
+        // Post Message
+        const payload = {
+            text: configStore.text || "",
+            fontBuffer,
+            layoutConfig,
+            gridConfig
+        };
+        
+        // Transfer the buffer to avoid copying 15MB
+        console.log("[Vector Export] Posting message to worker...");
+        worker.postMessage(payload, [fontBuffer]);
     });
-
-    console.log(`[Vector Export] Rendered ${cells.length} cells on ${doc.getNumberOfPages()} pages.`);
-
-    // 7. Save
-    const pdfOutput = doc.output('arraybuffer');
-    await writeFile(filePath, new Uint8Array(pdfOutput));
-    
-    // Success Alert
-    alert(`导出成功！\n文件已保存至: ${filePath}\n大小: ${(pdfOutput.byteLength / 1024).toFixed(2)} KB`);
-    
-    return true;
 
   } catch (e: any) {
     console.error("[Vector Export] Failed:", e);

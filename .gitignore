@@ -29,3 +29,5 @@ liumo-practice.pdf
 data
 dist_release/
 src-tauri/target/
+src-tauri/resources/
+public/fonts/
