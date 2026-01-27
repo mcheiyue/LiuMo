@@ -1,20 +1,16 @@
-<script setup lang="ts">
 import { ref } from 'vue';
 import { useConfigStore } from './stores/config';
-import PaperCanvas from './components/PaperCanvas.vue';
-import PaperCanvasNext from './components/PaperCanvasNext.vue';
+import PaperCanvas from './components/PaperCanvasNext.vue'; // Direct replacement
 import FontDropZone from './components/FontDropZone.vue';
 import PoetrySelector from './components/PoetrySelector.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
-import { exportToPDF, exportPdfVector } from './utils/exporter';
+import { exportPdfVector } from './utils/exporter'; // Remove exportToPDF (legacy)
 
 const config = useConfigStore();
 const showPoetrySelector = ref(false);
 const showSettings = ref(false);
-const canvasComponentRef = ref<InstanceType<typeof PaperCanvas> | null>(null);
 const isExporting = ref(false);
-const useNewEngine = ref(true); // Default to new layout engine
-const viewMode = ref<'continuous' | 'paged'>('continuous'); // Toggle for paged view
+const viewMode = ref<'continuous' | 'paged'>('continuous'); // Default to continuous
 
 function onFontLoaded(fontName: string) {
   // Update the reactive font variable to only affect the canvas
@@ -28,35 +24,14 @@ function onPoetrySelected(newText: string) {
 }
 
 async function handleExport() {
-  if (useNewEngine.value) {
-      // NEW ENGINE EXPORT
-      try {
-        isExporting.value = true;
-        const dateStr = new Date().toISOString().split('T')[0];
-        // Note: exportPdfVector handles the save dialog internally now
-        await exportPdfVector(`LiuMo_Vector_${dateStr}.pdf`, config, config.fontFaceCss);
-      } catch (e) {
-        console.error(e);
-        // Error alert is handled inside exportPdfVector
-      } finally {
-        isExporting.value = false;
-      }
-      return;
-  }
-
-  // OLD ENGINE EXPORT
-  if (!canvasComponentRef.value?.contentRef) return;
-  
   try {
     isExporting.value = true;
     const dateStr = new Date().toISOString().split('T')[0];
-    await exportToPDF(canvasComponentRef.value.contentRef, `LiuMo_${dateStr}.pdf`, {
-      layoutDirection: config.layoutDirection
-    });
+    // Note: exportPdfVector handles the save dialog internally now
+    await exportPdfVector(`LiuMo_Vector_${dateStr}.pdf`, config, config.fontFaceCss);
   } catch (e) {
     console.error(e);
-    // Show the actual error message
-    alert(`导出失败: ${e instanceof Error ? e.message : String(e)}`);
+    // Error alert is handled inside exportPdfVector
   } finally {
     isExporting.value = false;
   }
@@ -87,8 +62,26 @@ async function handleExport() {
       </div>
       
       <div class="flex gap-2 items-center">
-         <!-- New Engine Toggle Removed for Release v1.5.0 -->
-         
+         <!-- View Mode Toggle -->
+         <div class="join join-horizontal mr-2">
+           <button 
+             class="btn btn-sm join-item"
+             :class="viewMode === 'continuous' ? 'btn-neutral text-white' : 'btn-ghost text-stone-500'"
+             @click="viewMode = 'continuous'"
+             title="连续滚动模式"
+           >
+             📜 卷轴
+           </button>
+           <button 
+             class="btn btn-sm join-item"
+             :class="viewMode === 'paged' ? 'btn-neutral text-white' : 'btn-ghost text-stone-500'"
+             @click="viewMode = 'paged'"
+             title="分页预览模式"
+           >
+             📄 打印
+           </button>
+         </div>
+
          <button class="btn btn-sm btn-ghost text-inkstone" @click="showPoetrySelector = true">📚 诗词库</button>
          <button class="btn btn-sm btn-ghost text-inkstone" @click="showSettings = true">⚙️ 设置</button>
          <button 
@@ -102,8 +95,7 @@ async function handleExport() {
     </header>
     
     <main class="flex-1 overflow-auto relative bg-stone-200">
-      <PaperCanvasNext
-        v-if="useNewEngine"
+      <PaperCanvas
         :text="config.text" 
         :font-family="config.currentFont"
         :grid-type="config.gridType"
@@ -114,19 +106,6 @@ async function handleExport() {
         :fixed-grid="config.fixedGrid"
         :font-face-css="config.fontFaceCss"
         :view-mode="viewMode"
-      />
-      <PaperCanvas 
-        v-else
-        ref="canvasComponentRef"
-        :text="config.text" 
-        :font-family="config.currentFont"
-        :grid-type="config.gridType"
-        :border-mode="config.borderMode"
-        :layout-direction="config.layoutDirection"
-        :vertical-column-order="config.verticalColumnOrder"
-        :smart-snap="config.smartSnap"
-        :fixed-grid="config.fixedGrid"
-        :font-face-css="config.fontFaceCss"
       />
     </main>
   </div>
