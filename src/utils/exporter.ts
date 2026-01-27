@@ -3,8 +3,8 @@ import jsPDF from 'jspdf';
 import { save, ask } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 
-import { calculateLayout, calculateGridDimensions, CELL_SIZE, type LayoutConfig } from './layoutEngine';
-import { subsetFont } from './fontSubsetting';
+import { calculateLayout, CELL_SIZE, type LayoutConfig } from './layoutEngine';
+// import { subsetFont } from './fontSubsetting';
 
 /**
  * Extract Base64 font data from CSS string
@@ -121,7 +121,7 @@ export async function exportPdfVector(
     const contentH = pageHeight - margin * 2;
 
     // 2. Font Handling
-    let activeFontName = 'helvetica'; // Default fallback
+    // let activeFontName = 'helvetica'; // Default fallback
     
     if (finalFontBase64) { // Use finalFontBase64
       console.log("[Vector Export] Processing font...");
@@ -147,7 +147,7 @@ export async function exportPdfVector(
             doc.addFileToVFS('custom.ttf', pureBase64);
             doc.addFont('custom.ttf', fontName, 'normal');
             doc.setFont(fontName);
-            activeFontName = fontName;
+            // activeFontName = fontName;
             
             console.log(`[Vector Export] Custom font registered. Length: ${(pureBase64.length/1024/1024).toFixed(2)}MB`);
           } catch (e) {
