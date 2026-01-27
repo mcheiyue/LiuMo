@@ -116,13 +116,12 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
       const fitWidthInPdf = availPdfW;
       const fitWidthInPx = fitWidthInPdf / printScale;
       
-      // Phase 8 Fix: Use actual cellStride for accurate slicing
-      // Subtract padding (1px on each side = 2px total) from available space
-      const availableWidth = fitWidthInPx - 2;
-      const colsPerPage = Math.floor(availableWidth / cellStride);
+      // Phase 9 Fix: Use actual cellStride for accurate slicing
+      // Don't subtract padding - padding is outside the grid, not between cells
+      const colsPerPage = Math.floor(fitWidthInPx / cellStride);
       
-      // Slice width: exact multiples of cellStride, plus padding
-      const sliceW = colsPerPage * cellStride + 2;
+      // Slice width: exact multiples of cellStride
+      const sliceW = colsPerPage * cellStride;
       
       // Total Width
       const totalW = elW;
@@ -152,10 +151,9 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
       printScale = availPdfW / elW; // Width matches page width
       const fitHeightInPx = availPdfH / printScale;
       
-      // Phase 8 Fix: Use actual cellStride for accurate slicing
-      const availableHeight = fitHeightInPx - 2; // Subtract padding
-      const rowsPerPage = Math.floor(availableHeight / cellStride);
-      const sliceH = rowsPerPage * cellStride + 2; // Include padding
+      // Phase 9 Fix: Use actual cellStride for accurate slicing
+      const rowsPerPage = Math.floor(fitHeightInPx / cellStride);
+      const sliceH = rowsPerPage * cellStride;
       
       let currentTop = 0;
       while (currentTop < elH) {
@@ -186,10 +184,13 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
         quality: 1,
         bgcolor: '#F9F4E8',
         filter: (node: Node) => {
-          // Phase 8 Fix: Remove text-stroke that appears during export in Tauri WebView
+          // Phase 9 Fix: Remove borders and text-stroke in export
           if (node instanceof HTMLElement && node.style) {
+            // Critical: Force remove all borders (CharacterCell containers have black borders in export)
+            (node.style as any).border = 'none';
+            (node.style as any).outline = 'none';
+            (node.style as any).boxShadow = 'none';
             (node.style as any).webkitTextStroke = '';
-            // textStroke is not a standard property, skip it
           }
           return true;
         },
