@@ -145,12 +145,18 @@ const pages = computed(() => {
   return groups;
 });
 
-// Canvas Size Calculation
-const canvasStyle = computed(() => {
-  const { cols, rows, gap } = layoutDimensions.value; 
+  // Canvas Size Calculation
+  const canvasStyle = computed(() => {
+  const isPaged = props.viewMode === 'paged';
+  // If Paged Mode, use the dimensions of a SINGLE PAGE (gridDimensions)
+  // If Continuous Mode, use the EXPANDED dimensions (layoutDimensions)
+  const dims = isPaged ? gridDimensions.value : layoutDimensions.value;
+  
+  const { cols, rows, gap } = dims; 
   const isVertical = props.layoutDirection === 'vertical';
 
   // Gap Logic (Matching layoutEngine logic)
+
   let effectiveRowGap = gap;
   let effectiveColGap = gap;
     
