@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import jsPDF from 'jspdf';
 import { calculateLayout, CELL_SIZE, type LayoutConfig } from '../utils/layoutEngine';
-import { subsetFont } from '../utils/fontSubsetting';
+// import { subsetFont } from '../utils/fontSubsetting'; // Removed to avoid conflict with local HarfBuzz implementation
 
 // --- Types ---
 export interface WorkerPayload {
