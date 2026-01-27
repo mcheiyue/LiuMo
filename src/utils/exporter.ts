@@ -116,33 +116,45 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
       const fitWidthInPdf = availPdfW;
       const fitWidthInPx = fitWidthInPdf / printScale;
       
-      // Phase 9 Fix: Use actual cellStride for accurate slicing
-      // Don't subtract padding - padding is outside the grid, not between cells
+      // Phase 10 Fix: Prevent slicing mid-cell
+      // Calculate total columns from DOM
+      const totalCols = parseInt(element.getAttribute('data-cols') || '6', 10);
       const colsPerPage = Math.floor(fitWidthInPx / cellStride);
       
-      // Slice width: exact multiples of cellStride
-      const sliceW = colsPerPage * cellStride;
-      
-      // Total Width
-      const totalW = elW;
-      
-      // RTL Slicing: From Right to Left
-      let currentRight = totalW;
-      
-      while (currentRight > 0) {
-        // We want a chunk of width 'sliceW' ending at 'currentRight'
-        // Left Edge = currentRight - sliceW
-        let left = Math.max(0, currentRight - sliceW);
-        let w = currentRight - left;
+      // If we can't fit at least 1 column, scale down the content instead
+      if (colsPerPage < 1) {
+        // Single page, no slicing
+        pages.push({ x: 0, y: 0, w: elW, h: elH });
+      } else {
+        // Slice width: exact multiples of cellStride
+        const sliceW = colsPerPage * cellStride;
         
-        pages.push({
-          x: left,
-          y: 0,
-          w: w,
-          h: elH
-        });
+        // Total Width
+        const totalW = elW;
         
-        currentRight = left;
+        // RTL Slicing: From Right to Left
+        let currentRight = totalW;
+        let remainingCols = totalCols;
+        
+        while (currentRight > 0 && remainingCols > 0) {
+          // Determine how many columns to take for this page
+          const colsThisPage = Math.min(colsPerPage, remainingCols);
+          const widthThisPage = colsThisPage * cellStride;
+          
+          // Left edge
+          const left = Math.max(0, currentRight - widthThisPage);
+          const w = currentRight - left;
+          
+          pages.push({
+            x: left,
+            y: 0,
+            w: w,
+            h: elH
+          });
+          
+          currentRight = left;
+          remainingCols -= colsThisPage;
+        }
       }
       
     } else {
@@ -151,20 +163,35 @@ export async function exportToPDF(element: HTMLElement, defaultName: string = 'l
       printScale = availPdfW / elW; // Width matches page width
       const fitHeightInPx = availPdfH / printScale;
       
-      // Phase 9 Fix: Use actual cellStride for accurate slicing
+      // Phase 10 Fix: Prevent slicing mid-cell
+      const totalRows = parseInt(element.getAttribute('data-rows') || '10', 10);
       const rowsPerPage = Math.floor(fitHeightInPx / cellStride);
-      const sliceH = rowsPerPage * cellStride;
       
-      let currentTop = 0;
-      while (currentTop < elH) {
-        let h = Math.min(sliceH, elH - currentTop);
-        pages.push({
-          x: 0,
-          y: currentTop,
-          w: elW,
-          h: h
-        });
-        currentTop += h;
+      if (rowsPerPage < 1) {
+        // Single page, no slicing
+        pages.push({ x: 0, y: 0, w: elW, h: elH });
+      } else {
+        const sliceH = rowsPerPage * cellStride;
+        
+        let currentTop = 0;
+        let remainingRows = totalRows;
+        
+        while (currentTop < elH && remainingRows > 0) {
+          const rowsThisPage = Math.min(rowsPerPage, remainingRows);
+          const heightThisPage = rowsThisPage * cellStride;
+          
+          const h = Math.min(heightThisPage, elH - currentTop);
+          
+          pages.push({
+            x: 0,
+            y: currentTop,
+            w: elW,
+            h: h
+          });
+          
+          currentTop += h;
+          remainingRows -= rowsThisPage;
+        }
       }
     }
 
