@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { useConfigStore } from '../stores/config';
-import { runPdfPoc } from '../utils/pdfPoc';
-import { exportPdfVector } from '../utils/exporter';
 
 const config = useConfigStore();
 
