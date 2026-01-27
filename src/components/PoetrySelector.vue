@@ -86,14 +86,14 @@ function selectPoetry(poetry: Poetry) {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm" @click.self="$emit('close')" data-theme="light">
-    <div class="bg-base-100 w-full max-w-2xl h-[80vh] rounded-xl shadow-2xl flex flex-col overflow-hidden text-ink">
+  <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm" @click.self="$emit('close')">
+    <div class="bg-base-100 w-full max-w-2xl h-[80vh] rounded-xl shadow-2xl flex flex-col overflow-hidden text-base-content">
       <!-- Header -->
       <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-200/50">
-        <h2 class="text-xl font-bold flex items-center gap-2 text-ink">
+        <h2 class="text-xl font-bold flex items-center gap-2">
           <span>📚</span> 诗词库 (SQLite)
         </h2>
-        <button class="btn btn-sm btn-circle btn-ghost text-ink" @click="$emit('close')">✕</button>
+        <button class="btn btn-sm btn-circle btn-ghost" @click="$emit('close')">✕</button>
       </div>
       
       <!-- Filters -->
@@ -102,10 +102,10 @@ function selectPoetry(poetry: Poetry) {
           v-model.lazy="searchQuery" 
           type="text" 
           placeholder="搜索标题或作者..." 
-          class="input input-bordered input-sm flex-1 bg-white text-ink"
+          class="input input-bordered input-sm flex-1 bg-base-100 text-base-content"
           @keyup.enter="fetchPoetry(true)"
         />
-        <select v-model="selectedType" class="select select-bordered select-sm bg-white text-ink">
+        <select v-model="selectedType" class="select select-bordered select-sm bg-base-100 text-base-content">
           <option value="all">全部</option>
           <option value="shi">古诗</option>
           <option value="ci">宋词</option>
@@ -127,18 +127,18 @@ function selectPoetry(poetry: Poetry) {
         <div 
           v-for="poetry in poetryList" 
           :key="poetry.id"
-          class="card card-compact bg-base-100 border border-base-200 hover:border-cinnabar/50 hover:bg-stone-50 transition-colors cursor-pointer group"
+          class="card card-compact bg-base-100 border border-base-200 hover:border-cinnabar/50 hover:bg-base-200 transition-colors cursor-pointer group"
           @click="selectPoetry(poetry)"
         >
           <div class="card-body flex-row items-center justify-between">
             <div>
-              <h3 class="font-bold text-lg group-hover:text-cinnabar transition-colors text-ink">{{ poetry.title }}</h3>
-              <p class="text-sm text-base-content/70 text-inkstone">
-                <span class="badge badge-sm badge-ghost mr-2 text-inkstone">{{ poetry.dynasty }}</span>
+              <h3 class="font-bold text-lg group-hover:text-cinnabar transition-colors text-base-content">{{ poetry.title }}</h3>
+              <p class="text-sm text-base-content/70">
+                <span class="badge badge-sm badge-ghost mr-2 text-base-content/70">{{ poetry.dynasty }}</span>
                 {{ poetry.author }}
               </p>
             </div>
-            <div class="text-xs text-base-content/40 font-mono text-inkstone/50">
+            <div class="text-xs text-base-content/40 font-mono">
               {{ poetry.content[0].substring(0, 10) }}...
             </div>
           </div>
@@ -148,7 +148,7 @@ function selectPoetry(poetry: Poetry) {
            <span class="loading loading-spinner loading-sm text-cinnabar"></span>
         </div>
 
-        <div v-if="!isLoading && poetryList.length === 0" class="text-center py-10 text-base-content/50 text-inkstone">
+        <div v-if="!isLoading && poetryList.length === 0" class="text-center py-10 text-base-content/50">
           没有找到相关诗词
         </div>
       </div>

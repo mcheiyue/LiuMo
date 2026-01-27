@@ -6,6 +6,7 @@ export const useConfigStore = defineStore('config', () => {
   const text = ref("天地玄黄宇宙洪荒日月盈昃辰宿列张寒来暑往秋收冬藏闰余成岁律吕调阳");
   
   // Appearance
+  const theme = ref<'system' | 'light' | 'dark'>('system');
   const currentFont = ref<string>("");
   const layoutDirection = ref<'vertical' | 'horizontal'>('vertical');
   // Order of columns/rows: 
@@ -50,6 +51,7 @@ export const useConfigStore = defineStore('config', () => {
 
   return {
     text,
+    theme,
     currentFont,
     fontFaceCss,
     layoutDirection,
@@ -66,6 +68,7 @@ export const useConfigStore = defineStore('config', () => {
     // Persist everything EXCEPT fontFaceCss (it's too large)
     paths: [
       'text', 
+      'theme',
       'currentFont', 
       'layoutDirection', 
       'verticalColumnOrder', 
