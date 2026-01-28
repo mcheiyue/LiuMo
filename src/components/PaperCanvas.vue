@@ -137,7 +137,7 @@ const shouldShowBorder = computed(() => {
   return {
     width: `${widthPx}px`,
     height: `${heightPx}px`,
-    backgroundColor: '#D58B85',
+    backgroundColor: 'var(--color-cinnabar)', // 红色背景，通过 gap 透出作为分隔线
     fontFamily: props.fontFamily ? `'${props.fontFamily}', serif` : 'inherit',
   };
 });
@@ -170,10 +170,10 @@ watch(
 
 <template>
   <!-- Use justify-start or margin-auto to prevent center-clipping -->
-  <div class="w-full h-full overflow-auto flex p-8 bg-stone-300 relative" ref="containerRef">
+  <div class="w-full h-full overflow-auto flex p-8 bg-[var(--color-paper)] relative" ref="containerRef">
     <!-- Continuous Scroll Mode -->
     <div 
-        class="bg-white shadow-lg relative transition-all duration-300 ease-in-out border border-stone-200 shrink-0 mx-auto"
+        class="bg-[var(--color-paper)] shadow-2xl relative transition-all duration-300 ease-in-out shrink-0 mx-auto"
         :style="canvasStyle"
     >
       <CharacterCell 
@@ -184,7 +184,7 @@ watch(
         :font-family="fontFamily"
         :grid-type="gridType"
         :show-grid="props.borderMode === 'full'"
-        grid-color="#B22222"
+        grid-color="var(--color-grid)"
         :show-border="shouldShowBorder"
         :style="{
             position: 'absolute',

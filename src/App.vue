@@ -14,7 +14,49 @@ const showSettings = ref(false);
 const isExporting = ref(false);
 const isSystemDark = usePreferredDark();
 
-// Theme Management
+// Theme Management - with View Transitions
+function toggleTheme(event: MouseEvent) {
+  const isDark = config.theme === 'dark' || (config.theme === 'system' && isSystemDark.value);
+  const nextTheme = isDark ? 'light' : 'dark';
+
+  // @ts-ignore - View Transitions API
+  if (!document.startViewTransition) {
+    config.theme = nextTheme;
+    return;
+  }
+
+  // Get click position for ripple origin
+  const x = event.clientX;
+  const y = event.clientY;
+
+  // @ts-ignore
+  const transition = document.startViewTransition(() => {
+    config.theme = nextTheme;
+  });
+
+  transition.ready.then(() => {
+    // Calculate radius to cover the furthest corner
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    document.documentElement.animate(
+      {
+        clipPath: [
+          `circle(0px at ${x}px ${y}px)`,
+          `circle(${endRadius}px at ${x}px ${y}px)`
+        ]
+      },
+      {
+        duration: 500,
+        easing: 'ease-out',
+        pseudoElement: '::view-transition-new(root)'
+      }
+    );
+  });
+}
+
 watchEffect(() => {
   const theme = config.theme;
   const targetTheme = theme === 'system' 
@@ -29,6 +71,7 @@ watchEffect(() => {
     document.documentElement.classList.remove('dark');
   }
 });
+
 
 function onFontLoaded(fontName: string) {
   // Update the reactive font variable to only affect the canvas
@@ -57,7 +100,7 @@ async function handleExport() {
 </script>
 
 <template>
-  <div class="h-screen w-screen flex flex-col bg-base-200 overflow-hidden relative text-base-content">
+  <div class="h-screen w-screen flex flex-col overflow-hidden relative" style="background-color: var(--color-paper); color: var(--color-ink);">
     <FontDropZone @font-loaded="onFontLoaded" />
     <PoetrySelector v-if="showPoetrySelector" @select="onPoetrySelected" @close="showPoetrySelector = false" />
     <SettingsPanel 
@@ -65,26 +108,40 @@ async function handleExport() {
       @close="showSettings = false" 
     />
     
-    <header class="h-16 px-6 bg-base-100 border-b border-base-300 flex justify-between items-center shadow-sm shrink-0 z-10">
+    <header class="h-16 px-6 border-b flex justify-between items-center shadow-sm shrink-0 z-10" style="background-color: var(--color-paper); border-color: var(--color-grid);">
       <div class="flex items-center gap-2">
-        <div class="w-8 h-8 bg-cinnabar text-white flex items-center justify-center font-serif text-lg rounded-sm">流</div>
-        <h1 class="text-xl font-bold text-base-content tracking-widest font-serif">流摹 LiuMo</h1>
+        <div class="w-8 h-8 text-white flex items-center justify-center font-serif text-lg rounded-sm" style="background-color: var(--color-cinnabar);">流</div>
+        <h1 class="text-xl font-bold tracking-widest font-serif" style="color: var(--color-ink);">流摹 LiuMo</h1>
       </div>
       
       <div class="flex-1 max-w-xl mx-4">
         <input 
           v-model="config.text" 
-          class="input input-bordered input-sm w-full bg-base-200 text-base-content focus:border-cinnabar focus:outline-none" 
+          class="input input-bordered input-sm w-full focus:outline-none" 
+          style="background-color: rgba(255,255,255,0.3); color: var(--color-ink); border-color: var(--color-grid);"
           placeholder="请输入要练习的文字..."
         />
       </div>
       
       <div class="flex gap-2 items-center">
          
-         <button class="btn btn-sm btn-ghost text-base-content" @click="showPoetrySelector = true">📚 诗词库</button>
-         <button class="btn btn-sm btn-ghost text-base-content" @click="showSettings = true">⚙️ 设置</button>
+         <button class="btn btn-sm btn-ghost" style="color: var(--color-ink);" @click="showPoetrySelector = true">📚 诗词库</button>
+         
+         <!-- Theme Toggle Button -->
          <button 
-           class="btn btn-sm bg-cinnabar text-white hover:bg-red-800 border-none"
+           class="btn btn-sm btn-ghost btn-circle text-xl" 
+           style="color: var(--color-ink);" 
+           @click="toggleTheme"
+           title="切换日/夜模式"
+         >
+           <span v-if="config.theme === 'dark' || (config.theme === 'system' && isSystemDark)">🌙</span>
+           <span v-else>☀️</span>
+         </button>
+
+         <button class="btn btn-sm btn-ghost" style="color: var(--color-ink);" @click="showSettings = true">⚙️ 设置</button>
+         <button 
+           class="btn btn-sm text-white hover:opacity-90 border-none"
+           style="background-color: var(--color-theme);"
            :class="{ 'opacity-50 cursor-not-allowed': isExporting }"
            @click="handleExport"
          >
@@ -93,7 +150,7 @@ async function handleExport() {
       </div>
     </header>
     
-    <main class="flex-1 overflow-auto relative bg-base-300/50">
+    <main class="flex-1 overflow-auto relative bg-transparent">
       <PaperCanvas
         :text="config.text" 
         :font-family="config.currentFont"

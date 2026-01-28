@@ -2,8 +2,9 @@
 @plugin "daisyui";
 
 @theme {
-  --color-paper: #F9F4E8;
-  --color-ink: #1A1A1A;
+  --color-paper: #EDE5CF;
+  --color-ink: #3D2B1F;
+  --color-theme: #B8860B;
   --color-cinnabar: #B22222;
   --color-inkstone: #4A4A4A;
 }
@@ -12,10 +13,41 @@
   background-color: var(--color-paper);
   color: var(--color-ink);
   font-family: "KaiTi", "STKaiti", serif; /* Default to KaiTi for calligraphy feel */
+  --color-grid: rgba(61, 43, 31, 0.15); /* 焦墨淡色作为格子，比暗金更自然 */
 }
+
+/* 深色模式 - 模拟古籍拓片/夜间阅读 (柔和版) */
+.dark {
+  --color-paper: #2C241B;      /* 暖深胡桃木色 - 比纯黑更柔和 */
+  --color-ink: #D6C6B0;        /* 暖象牙白/米色 - 护眼 */
+  --color-theme: #CC9933;      /* 沉稳的暗金色 */
+  --color-cinnabar: #D65C5C;   /* 柔和的朱红，不刺眼 */
+  --color-inkstone: #8A7E72;   /* 暖灰 */
+  --color-grid: rgba(214, 198, 176, 0.12); /* 极淡的米色网格 */
+}
+
+.dark {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Vertical writing mode utility */
 
 /* Vertical writing mode utility */
 .writing-vertical-rl {
   writing-mode: vertical-rl;
-  text-orientation: upright;
 }
+
+/* View Transitions API Animations */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 9999;
+}
+/* Removed incorrect .dark z-index inversion which hid the expansion animation */

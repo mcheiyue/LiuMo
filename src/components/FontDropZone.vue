@@ -128,15 +128,15 @@ function onDrop(e: DragEvent) {
     <!-- Drop Zone Content -->
     <div 
       v-if="isDragging"
-      class="absolute inset-4 border-4 border-dashed border-cinnabar rounded-2xl flex flex-col items-center justify-center bg-paper/90 pointer-events-none"
+      class="absolute inset-4 border-4 border-dashed border-[var(--color-theme)] rounded-2xl flex flex-col items-center justify-center bg-[var(--color-paper)]/90 pointer-events-none"
     >
       <div class="text-6xl mb-4">✍️</div>
-      <h2 class="text-3xl font-bold text-cinnabar mb-2">释放以安装字体</h2>
-      <p class="text-inkstone text-lg">支持 .ttf, .otf</p>
+      <h2 class="text-3xl font-bold text-[var(--color-theme)] mb-2">释放以安装字体</h2>
+      <p class="text-[var(--color-ink)] text-lg">支持 .ttf, .otf</p>
     </div>
 
     <!-- Status Message Toast -->
-    <div v-if="message" class="absolute top-20 left-1/2 -translate-x-1/2 bg-ink text-paper px-6 py-3 rounded-full shadow-lg pointer-events-auto flex items-center gap-2">
+    <div v-if="message" class="absolute top-20 left-1/2 -translate-x-1/2 bg-[var(--color-ink)] text-[var(--color-paper)] px-6 py-3 rounded-full shadow-lg pointer-events-auto flex items-center gap-2">
       <span>ℹ️</span>
       <span>{{ message }}</span>
     </div>
