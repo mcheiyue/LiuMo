@@ -14,13 +14,20 @@
     *   内置 **40万+** 首诗词歌赋，无需联网即可搜索。
     *   涵盖：全唐诗、全宋词、元曲、古文观止、诗经、论语、蒙学及现代诗。
     *   支持按朝代、作者、体裁（诗/词/曲/文）快速筛选。
+*   **沉浸式体验**:
+    *   **水墨涟漪**: 独特的交互反馈，指尖触碰如墨入水。
+    *   **每日诗词**: 汲取传统配色的动态主题系统，全面支持**深色模式**。
 *   **竖排书法引擎**: 完美支持中文古风竖排布局 (`vertical-rl`)。
 *   **智能网格系统**: 支持米字格、田字格、回宫格，可自定义显示或隐藏。
 *   **本地字体管理**: 
     *   支持拖拽安装 `.ttf/.otf` 字体。
     *   Rust 后端智能校验（自动检测是否支持“永”字）。
     *   无需安装到系统，应用内即拖即用。
-*   **高清导出**: 支持将作品导出为 A4 格式 PDF，自动添加页眉页脚与装裱边框。
+*   **专业级导出**: 
+    *   **智能分页**: 自动计算诗词布局，防止跨页截断。
+    *   **字体嵌入**: 彻底解决 PDF 导出后的字体缺失问题。
+    *   **HarfBuzz 引擎**: 引入工业级排版引擎，导出速度提升 50%。
+    *   支持将作品导出为 A4 格式 PDF，自动添加页眉页脚与装裱边框。
 *   **极致性能**: 
     *   Rust + SQLite 驱动，秒级检索。
     *   智能分页加载，内存占用极低。
@@ -32,6 +39,7 @@
 *   **Frontend**: [Vue 3](https://vuejs.org/) + [TypeScript](https://www.typescriptlang.org/) + [Pinia](https://pinia.vuejs.org/)
 *   **UI/Styling**: [Tailwind CSS 4](https://tailwindcss.com/) + [daisyUI 5](https://daisyui.com/)
 *   **Data Engineering**: Node.js ETL Pipeline (OpenCC + Bun)
+*   **Asset Management**: [LiuMo-assets](https://github.com/mcheiyue/LiuMo-assets) - 独立维护的大型二进制资源库（数据库、字体），以保持主仓库轻量化。
 
 ## 🤝 致谢 (Credits)
 
@@ -58,7 +66,11 @@ npm install
 # 或者使用 bun
 bun install
 
-# 3. 启动开发模式 (桌面端)
+# 3. 拉取静态资源 (关键步骤)
+# 从 liumo-assets 仓库自动下载最新的数据库与字体文件
+npm run fetch-assets
+
+# 4. 启动开发模式 (桌面端)
 npm run tauri dev
 # 或者
 bun tauri dev
