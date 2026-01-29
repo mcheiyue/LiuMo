@@ -54,10 +54,12 @@ Write-Step "Checking CHANGELOG.md..."
 $changelogPath = "CHANGELOG.md"
 if (-not (Test-Path $changelogPath)) { Write-Error-Exit "CHANGELOG.md not found!" }
 $changelogContent = Get-Content $changelogPath -Raw
-$expectedHeader = "## [v$pkgVersion]"
 
-if ($changelogContent -notmatch [regex]::Escape($expectedHeader)) {
-    Write-Error-Exit "CHANGELOG.md does not contain header for current version: $expectedHeader"
+# Flexible matching: "## [v1.6.0]" or "## v1.6.0"
+$pattern = "## \[?v$pkgVersion\]?"
+
+if ($changelogContent -notmatch $pattern) {
+    Write-Error-Exit "CHANGELOG.md does not contain header for current version: ## v$pkgVersion"
 }
 Write-Success "CHANGELOG.md contains entry for v$pkgVersion"
 
