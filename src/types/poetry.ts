@@ -4,12 +4,18 @@ export interface Poetry {
   id: string;
   title: string;
   author: string;
-  dynasty?: string; // e.g., "唐", "宋", "现代"
-  content: string[]; // Each string is a line or paragraph
-  type: PoetryType;
-  intro?: string; // Brief introduction or translation
-  tags?: string[];
+  dynasty: string;
+  content: string[];
+  type: string; // 'shi' | 'ci' | 'qu' | 'modern' | 'prose'
+
+  // New fields (V7.0)
+  layout_strategy?: string;
+  content_json?: string;
+  display_content?: string;
+  tags?: string;
+  search_content?: string;
 }
+
 
 export interface PoetryCollection {
   name: string;
