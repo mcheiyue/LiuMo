@@ -10,14 +10,27 @@ echo "🔍 Checking for latest tag..."
 LATEST_TAG=$(git describe --tags --abbrev=0)
 echo "   Target Version: $LATEST_TAG"
 
-echo "⏳ Finding workflow run for $LATEST_TAG..."
-# Get the run ID for the latest release workflow triggered by this tag
-RUN_ID=$(gh run list --workflow release.yml --branch "$LATEST_TAG" --limit 1 --json databaseId --jq '.[0].databaseId')
+echo "⏳ Waiting for workflow to appear for $LATEST_TAG..."
+
+# Retry loop: Wait up to 60 seconds for the workflow to start
+MAX_RETRIES=12
+for ((i=1; i<=MAX_RETRIES; i++)); do
+    # Try to find a run specifically triggered by this tag
+    RUN_ID=$(gh run list --workflow release.yml --branch "$LATEST_TAG" --limit 1 --json databaseId --jq '.[0].databaseId')
+    
+    if [ -n "$RUN_ID" ]; then
+        echo "   Found Run ID: $RUN_ID"
+        break
+    fi
+    
+    echo "   ... run not found yet, retrying in 5s ($i/$MAX_RETRIES)..."
+    sleep 5
+done
 
 if [ -z "$RUN_ID" ]; then
-    echo "   No workflow found specifically for tag $LATEST_TAG yet."
-    echo "   Checking for any recent release run..."
-    RUN_ID=$(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+    echo "❌ Timeout: Could not find a workflow run for tag $LATEST_TAG after 60 seconds."
+    echo "   Please check GitHub Actions tab manually."
+    exit 1
 fi
 
 echo "👀 Watching build process (Run ID: $RUN_ID)..."
@@ -31,6 +44,7 @@ if [ $? -eq 0 ]; then
     mkdir -p dist_release
     
     # Download the specific portable asset
+    # Note: Matches the artifact name from release.yml: LiuMo_*_portable.exe
     gh release download "$LATEST_TAG" --pattern "*portable.exe" --dir dist_release --clobber
     
     echo "🎉 Download complete! Check 'dist_release' folder."
