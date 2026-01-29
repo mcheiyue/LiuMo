@@ -4,6 +4,11 @@
 
 $ErrorActionPreference = "Stop"
 
+# Set Proxy for GitHub CLI
+$env:HTTP_PROXY = "http://127.0.0.1:7897"
+$env:HTTPS_PROXY = "http://127.0.0.1:7897"
+Write-Host "[CONFIG] Proxy set to 127.0.0.1:7897" -ForegroundColor DarkGray
+
 function Write-Step { param($msg) Write-Host "`n[STEP] $msg" -ForegroundColor Cyan }
 function Write-Success { param($msg) Write-Host "  OK: $msg" -ForegroundColor Green }
 function Write-Error-Exit { param($msg) Write-Host "`n[ERROR] $msg" -ForegroundColor Red; exit 1 }
