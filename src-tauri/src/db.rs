@@ -6,7 +6,6 @@ use std::io::{BufWriter, Cursor, Write};
 use tauri::{AppHandle, Manager};
 
 // EMBED THE DATABASE INTO THE BINARY
-// Correct path: relative to this file (src/db.rs) -> ../resources/
 const DB_GZ_BYTES: &[u8] = include_bytes!("../resources/liumo_full.db.gz");
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -16,6 +15,7 @@ pub struct Poetry {
     pub author: String,
     pub dynasty: String,
     pub content: String,
+    #[serde(rename = "type")]
     pub type_: String,
 
     // New fields (V7.0) - Optional for compatibility
@@ -33,37 +33,29 @@ pub fn init_db(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         std::fs::create_dir_all(&app_data_dir)?;
     }
 
-    let db_path = app_data_dir.join("liumo.db");
-    let version_path = app_data_dir.join("liumo.db.version");
+    let db_path = app_data_dir.join("liumo_v7.db");
+    let version_path = app_data_dir.join("liumo_v7.db.version");
 
     let current_version = app.package_info().version.to_string();
     let mut should_extract = false;
 
     // 1. Check if DB exists
     if !db_path.exists() {
-        println!("Database missing. Marking for extraction.");
         should_extract = true;
     }
     // 2. Check version marker
     else if version_path.exists() {
         let saved_version = std::fs::read_to_string(&version_path)?.trim().to_string();
         if saved_version != current_version {
-            println!(
-                "Database version mismatch (Saved: {}, Current: {}). Updating...",
-                saved_version, current_version
-            );
             should_extract = true;
         }
     }
     // 3. No version file but DB exists (legacy case), force update to be safe
     else {
-        println!("Database exists but no version marker. Forcing update to ensure consistency.");
         should_extract = true;
     }
 
     if should_extract {
-        println!("Extracting embedded database to {:?}", db_path);
-
         // Decompress from MEMORY (embedded bytes) to DISK
         let cursor = Cursor::new(DB_GZ_BYTES);
         let mut decoder = GzDecoder::new(cursor);
@@ -75,13 +67,6 @@ pub fn init_db(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
         // Write version marker
         std::fs::write(&version_path, &current_version)?;
-
-        println!(
-            "✅ Database successfully extracted and version marked as {}",
-            current_version
-        );
-    } else {
-        println!("Database is up to date (v{}).", current_version);
     }
 
     Ok(())
@@ -96,16 +81,19 @@ pub fn search_poetry(
     limit: i64,
 ) -> Result<Vec<Poetry>, String> {
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let db_path = app_data_dir.join("liumo.db");
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let db_path = app_data_dir.join("liumo_v7.db");
+
+    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
 
     let mut query = "SELECT id, title, author, dynasty, content, type FROM poetry WHERE (title LIKE ?1 OR author LIKE ?1 OR content LIKE ?1)".to_string();
 
     if type_filter != "all" {
-        query.push_str(" AND type = '");
+        query.push_str(" AND (type = '");
         let safe_type = type_filter.replace("'", "");
         query.push_str(&safe_type);
-        query.push_str("'");
+        query.push_str("' OR tags LIKE '%");
+        query.push_str(&safe_type);
+        query.push_str("%')");
     }
 
     query.push_str(" LIMIT ?2 OFFSET ?3");
@@ -123,7 +111,6 @@ pub fn search_poetry(
                 dynasty: row.get(3)?,
                 content: row.get(4)?,
                 type_: row.get(5)?,
-                // Fill new fields with None until DB schema is updated in v1.6.5
                 layout_strategy: None,
                 content_json: None,
                 display_content: None,

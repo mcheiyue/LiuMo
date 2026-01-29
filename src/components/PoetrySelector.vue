@@ -41,12 +41,24 @@ async function fetchPoetry(reset = true) {
       hasMore.value = false;
     }
 
-    // Parse content from JSON string
-    const newItems = results.map(p => ({
-      ...p,
-      type: p.type_, // Map Rust type_ to type
-      content: JSON.parse(p.content)
-    }));
+    // Parse content from JSON string or handle plain text
+    const newItems = results.map(p => {
+      let parsedContent: string[];
+      try {
+        // Try parsing as JSON array (Legacy format)
+        const parsed = JSON.parse(p.content);
+        parsedContent = Array.isArray(parsed) ? parsed : [p.content];
+      } catch (e) {
+        // Fallback: Handle V7.1 plain text content (split by newline)
+        parsedContent = p.content ? p.content.split('\n') : [];
+      }
+
+      return {
+        ...p,
+        type: p.type_, // Map Rust type_ to type
+        content: parsedContent
+      };
+    });
 
     if (reset) {
       poetryList.value = newItems;
