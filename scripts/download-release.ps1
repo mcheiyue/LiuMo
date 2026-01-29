@@ -20,7 +20,7 @@ Write-Host "   Target Version: $latestTag" -ForegroundColor Yellow
 # 2. Find Workflow Run ID (with Retry)
 Write-Step "Waiting for workflow to appear for $latestTag..."
 $runId = $null
-$maxRetries = 12
+$maxRetries = 120 # Wait up to 10 minutes (120 * 5s)
 
 for ($i = 1; $i -le $maxRetries; $i++) {
     # Check specifically for this tag
