@@ -1,12 +1,11 @@
 {
   "name": "liumo",
   "private": true,
-  "version": "1.6.1",
+  "version": "1.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/fetch-assets.js && vue-tsc --noEmit && vite build",
-    "fetch-assets": "node scripts/fetch-assets.js",
+    "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri"
   },

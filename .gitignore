@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Node
 node_modules
 dist
 dist-ssr
@@ -28,6 +29,9 @@ dist-ssr
 liumo-practice.pdf
 data
 dist_release/
+release_dist/
+assets_download/
 src-tauri/target/
-src-tauri/resources/
+src-tauri/resources/*.db
+src-tauri/resources/*.gz
 public/fonts/

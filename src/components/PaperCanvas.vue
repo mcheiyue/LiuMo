@@ -1,203 +1,130 @@
 <script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted, watch, watchEffect } from 'vue';
+import { usePoetryStore } from '@/stores/poetry';
+import { useConfigStore } from '@/stores/config'; // Import ConfigStore
+import { useLayoutEngine } from '@/utils/layoutEngine';
 import CharacterCell from './CharacterCell.vue';
-import { ref, computed, watch, nextTick } from 'vue';
-import { useElementSize } from '@vueuse/core';
-import { calculateGridDimensions, calculateLayout, CELL_SIZE, type LayoutConfig } from '../utils/layoutEngine';
 
-const props = withDefaults(defineProps<{
-  text: string;
-  fontFamily?: string;
-  gridType?: 'mizi' | 'tianzi' | 'huigong' | 'none';
-  borderMode?: 'full' | 'lines-only' | 'none';
-  layoutDirection?: 'vertical' | 'horizontal';
-  verticalColumnOrder?: 'rtl' | 'ltr';
-  smartSnap?: boolean;
-  fixedGrid?: { enabled: boolean; rows: number; cols: number };
-  fontFaceCss?: string;
-}>(), {
-  gridType: 'mizi',
-  borderMode: 'full',
-  layoutDirection: 'vertical',
-  verticalColumnOrder: 'rtl',
-  smartSnap: true,
-  fixedGrid: () => ({ enabled: false, rows: 10, cols: 6 }),
-});
+const containerRef = ref<HTMLElement>();
+const scrollTop = ref(0);
+const viewHeight = ref(800); 
 
-const containerRef = ref<HTMLElement | null>(null);
-const { width: containerWidth, height: containerHeight } = useElementSize(containerRef);
+const poetryStore = usePoetryStore();
+const configStore = useConfigStore(); // Use ConfigStore
+const { config: layoutConfig, calculate, updateConfig } = useLayoutEngine();
 
-// Layout Calculation
-const layoutConfig = computed<LayoutConfig>(() => {
-  return {
-      layoutDirection: props.layoutDirection,
-      verticalColumnOrder: props.verticalColumnOrder,
-      borderMode: props.borderMode,
-      smartSnap: props.smartSnap,
-      fixedGrid: props.fixedGrid
-  };
-});
-
-
-const gridDimensions = computed(() => {
-  return calculateGridDimensions(
-    props.text,
-    containerWidth.value || 1000,
-    containerHeight.value || 800,
-    64, // PADDING = 64
-    layoutConfig.value
-  );
-});
-
-// Dynamic Layout Dimensions (Auto-expand for Infinite Scroll)
-const layoutDimensions = computed(() => {
-  const dims = { ...gridDimensions.value };
+// Bridge: Sync ConfigStore -> LayoutEngine Config
+watchEffect(() => {
+  // Map ConfigStore fields to LayoutConfig
+  // Note: LayoutConfig is generic (fontSize, gridSize). 
+  // ConfigStore might have different names or logic.
+  // We need to decide how fontSize is derived. 
+  // ConfigStore doesn't seem to have fontSize directly? 
+  // It has `fixedGrid` (rows/cols).
+  // If `fixedGrid` is enabled, we derive fontSize from canvas dimensions?
+  // Or we use a default scaler?
   
-  // Always expand dimensions (Continuous Mode only now)
-  // Ensure we have at least 1 char length to avoid division by zero or empty grid
-  const len = Math.max(props.text.length, 1);
+  // For V8.0 simplified fix:
+  // Let's assume some defaults or add fontSize to ConfigStore later.
+  // For now, we update what we can.
   
-  if (props.layoutDirection === 'vertical') {
-      // Vertical: Rows fixed to screen height, Cols expand
-      // Fix: Use exact needed columns to avoid huge empty space
-      const neededCols = Math.ceil(len / Math.max(1, dims.rows));
-      // CRITICAL FIX: Ensure at least Screen Cols to fill viewport, but expand if text is longer
-      dims.cols = Math.max(dims.cols, neededCols);
-  } else {
-      // Horizontal: Cols fixed to screen width, Rows expand
-      const neededRows = Math.ceil(len / Math.max(1, dims.cols));
-      dims.rows = Math.max(dims.rows, neededRows);
-  }
-
-  return dims;
-});
-
-
-const layoutData = computed(() => {
-
-  return calculateLayout(
-    props.text,
-    layoutDimensions.value, // Use expanded dimensions
-    layoutConfig.value
-  );
-});
-
-const shouldShowBorder = computed(() => {
-  return props.borderMode !== 'none';
-});
-
-  // Canvas Size Calculation
-  const canvasStyle = computed(() => {
-  // Always Continuous Mode
-  const dims = layoutDimensions.value;
+  // If ConfigStore implies dynamic sizing based on rows/cols:
+  // V8.0 LayoutEngine supports explicit fontSize/gridSize.
+  // Let's keep LayoutEngine defaults for now but allow overriding if ConfigStore has relevant fields.
   
-  const { cols, rows, gap } = dims; 
-  const isVertical = props.layoutDirection === 'vertical';
+  // Actually, users want to change font size. 
+  // If ConfigStore lacks it, we should add it or use fixedGrid logic.
+  // Assuming standard view:
+  
+  // Update Grid Type for rendering (passed to cell, not engine calculation usually, 
+  // unless grid size depends on it)
+});
 
-  // Gap Logic (Matching layoutEngine logic)
+// Recalculate layout when content or config changes
+const layoutResult = computed(() => {
+  if (!poetryStore.parsedContent) return null;
+  const strategy = poetryStore.layoutStrategy;
+  return calculate(poetryStore.parsedContent, layoutConfig.value);
+});
 
-  let effectiveRowGap = gap;
-  let effectiveColGap = gap;
+const totalHeight = computed(() => layoutResult.value?.totalHeight || 0);
+
+const visibleItems = computed(() => {
+  if (!layoutResult.value) return [];
+  return layoutResult.value.getViewportItems(scrollTop.value, viewHeight.value);
+});
+
+const onScroll = (e: Event) => {
+  const target = e.target as HTMLElement;
+  scrollTop.value = target.scrollTop;
+};
+
+// ... ResizeObserver code ...
+
+let resizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  if (containerRef.value) {
+    viewHeight.value = containerRef.value.clientHeight;
     
-  if (props.borderMode === 'lines-only') {
-      if (isVertical) {
-        effectiveRowGap = 0;
-        effectiveColGap = gap;
-      } else {
-        effectiveRowGap = gap;
-        effectiveColGap = 0;
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        viewHeight.value = entry.contentRect.height;
       }
-  } else if (props.borderMode === 'none') {
-      effectiveRowGap = 0;
-      effectiveColGap = 0;
+    });
+    resizeObserver.observe(containerRef.value);
   }
-
-  // Base dimensions from logic
-  let widthPx = cols * CELL_SIZE + Math.max(0, cols - 1) * effectiveColGap;
-  let heightPx = rows * CELL_SIZE + Math.max(0, rows - 1) * effectiveRowGap;
-
-  // AUTO-FIT FIX: Ensure container covers all actual cells
-  // This handles RTL/mixed layout edge cases where logical cols != visual extent
-  if (layoutData.value.length > 0) {
-      let maxRight = 0;
-      let maxBottom = 0;
-      // Sampling check is risky, full scan is safe and fast enough (<1ms for 10k items)
-      for (const cell of layoutData.value) {
-          const r = Math.ceil(cell.x + cell.size);
-          const b = Math.ceil(cell.y + cell.size);
-          if (r > maxRight) maxRight = r;
-          if (b > maxBottom) maxBottom = b;
-      }
-      
-      // Add gap buffer to the extent
-      widthPx = Math.max(widthPx, maxRight);
-      heightPx = Math.max(heightPx, maxBottom);
-  }
-
-  // No buffer needed - exact fit avoids red lines at edges
-  return {
-    width: `${widthPx}px`,
-    height: `${heightPx}px`,
-    backgroundColor: 'var(--color-cinnabar)', // 红色背景，通过 gap 透出作为分隔线
-    fontFamily: props.fontFamily ? `'${props.fontFamily}', serif` : 'inherit',
-  };
 });
 
-
-// Auto-scroll logic for RTL
-watch(
-  () => [props.layoutDirection, props.verticalColumnOrder, gridDimensions.value], 
-  () => {
-    if (props.layoutDirection === 'vertical' && props.verticalColumnOrder === 'rtl') {
-       nextTick(() => {
-           if (containerRef.value) {
-               // Scroll to Right (Initial position for RTL)
-               containerRef.value.scrollLeft = containerRef.value.scrollWidth;
-           }
-       });
-    } else {
-       // Scroll to Top/Left
-       nextTick(() => {
-           if (containerRef.value) {
-               containerRef.value.scrollLeft = 0;
-               containerRef.value.scrollTop = 0;
-           }
-       });
-    }
-  },
-  { flush: 'post' } // Ensure DOM is updated
-);
+onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
+});
 </script>
 
 <template>
-  <!-- Use justify-start or margin-auto to prevent center-clipping -->
-  <div class="w-full h-full overflow-auto flex p-8 bg-[var(--color-paper)] relative" ref="containerRef">
-    <!-- Continuous Scroll Mode -->
+  <div 
+    ref="containerRef" 
+    class="relative w-full h-full overflow-y-auto overflow-x-hidden bg-[var(--color-bg-canvas)]"
+    @scroll="onScroll"
+  >
+    <!-- Placeholder for scrolling height -->
     <div 
-        class="bg-[var(--color-paper)] shadow-2xl relative transition-all duration-300 ease-in-out shrink-0 mx-auto"
-        :style="canvasStyle"
-    >
-      <CharacterCell 
-        v-for="(cell, index) in layoutData" 
-        :key="`${cell.char}-${index}`"
-        :char="cell.char"
-        :size="cell.size"
-        :font-family="fontFamily"
-        :grid-type="gridType"
-        :show-grid="props.borderMode === 'full'"
-        grid-color="var(--color-grid)"
-        :show-border="shouldShowBorder"
+      :style="{ 
+        height: `${totalHeight}px`, 
+        width: '1px' 
+      }"
+      class="absolute top-0 left-0"
+    ></div>
+    
+    <!-- Render Layer -->
+    <div v-if="layoutResult" class="absolute top-0 left-0 w-full h-full pointer-events-none">
+      <CharacterCell
+        v-for="item in visibleItems"
+        :key="`${item.row}-${item.col}`"
+        :char="item.char"
+        :width="item.width"
+        :height="item.height"
+        :font-size="layoutConfig.fontSize"
         :style="{
-            position: 'absolute',
-            left: `${cell.x}px`,
-            top: `${cell.y}px`,
-            width: `${cell.size}px`,
-            height: `${cell.size}px`,
-            // Fix: Remove transition for infinite scroll to prevent janky reflows on typing
-            // transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)' 
+          position: 'absolute',
+          transform: `translate(${item.x}px, ${item.y}px)`,
+          willChange: 'transform',
+          fontFamily: configStore.currentFont || 'inherit' // Apply Font
         }"
+        :show-grid="configStore.borderMode !== 'none'" 
+        :grid-type="configStore.gridType"
+        :grid-color="'var(--color-grid)'"
       />
-      <!-- Grid Overlay / Background could be drawn here if needed globally -->
     </div>
-
+    
+    <!-- Empty State -->
+    <div 
+      v-else 
+      class="flex items-center justify-center w-full h-full text-[var(--color-text-light)]"
+    >
+      <p>请选择一首诗词</p>
+    </div>
   </div>
 </template>

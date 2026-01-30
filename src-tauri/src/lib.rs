@@ -32,7 +32,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             font_utils::validate_font,
-            db::search_poetry
+            db::search_poetry,
+            db::get_filter_options
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

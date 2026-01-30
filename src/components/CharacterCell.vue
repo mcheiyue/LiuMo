@@ -6,17 +6,24 @@ const props = withDefaults(defineProps<{
   gridType?: 'mizi' | 'tianzi' | 'huigong' | 'none';
   showGrid?: boolean;
   gridColor?: string;
+  // New props for dynamic layout
+  width?: number;
+  height?: number;
+  fontSize?: number;
 }>(), {
   char: '',
   gridType: 'mizi',
   showGrid: false,
-  gridColor: 'var(--color-grid)'
+  gridColor: 'var(--color-grid)',
+  width: 96,
+  height: 96,
+  fontSize: 60
 });
 
 const gridPath = computed(() => {
   if (!props.showGrid || props.gridType === 'none') return '';
   
-  // Assuming 100x100 coordinate system
+  // Assuming 100x100 coordinate system internal to SVG
   switch (props.gridType) {
     case 'tianzi':
       return 'M 0 50 L 100 50 M 50 0 L 50 100';
@@ -34,17 +41,16 @@ const gridPath = computed(() => {
 
 <template>
   <div 
-    class="relative w-24 h-24 flex items-center justify-center"
+    class="relative flex items-center justify-center"
     :style="{
-      width: '96px',
-      height: '96px',
-      backgroundColor: 'var(--color-paper)', // 恢复纸张背景，遮挡底层的红色
+      width: `${width}px`,
+      height: `${height}px`,
+      backgroundColor: 'var(--color-paper)',
       border: 'none',
       boxSizing: 'border-box'
     }"
   >
-    <!-- Grid Layer (Internal lines only) -->
-    <!-- Phase 5 Fix: Ensure SVG is strictly controlled by gridType/showGrid -->
+    <!-- Grid Layer -->
     <svg 
       v-if="showGrid && gridType !== 'none'" 
       :style="{ display: 'block', stroke: gridColor }"
@@ -55,7 +61,14 @@ const gridPath = computed(() => {
     </svg>
     
     <!-- Text Layer -->
-    <span class="text-6xl z-10 leading-none select-none" style="font-family: inherit; color: var(--color-ink);">
+    <span 
+      class="z-10 leading-none select-none" 
+      :style="{ 
+        fontFamily: 'inherit', 
+        color: 'var(--color-ink)',
+        fontSize: `${fontSize}px` 
+      }"
+    >
       {{ char }}
     </span>
   </div>

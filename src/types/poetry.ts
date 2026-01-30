@@ -1,24 +1,17 @@
-export type PoetryType = 'shi' | 'ci' | 'qu' | 'modern' | 'prose';
+// Data Model Definition (V8.0)
+import type { LayoutStrategy } from '../utils/layoutEngine/types';
 
 export interface Poetry {
   id: string;
   title: string;
   author: string;
   dynasty: string;
-  content: string[];
-  type: string; // 'shi' | 'ci' | 'qu' | 'modern' | 'prose'
-
-  // New fields (V7.0)
-  layout_strategy?: string;
-  content_json?: string;
-  display_content?: string;
-  tags?: string;
-  search_content?: string;
-}
-
-
-export interface PoetryCollection {
-  name: string;
-  version: string;
-  data: Poetry[];
+  
+  // V8.0 Core Fields
+  layout_strategy: LayoutStrategy;
+  content_json: string; // JSON string to be parsed
+  
+  // Auxiliary
+  tags: string[];
+  source: string;
 }

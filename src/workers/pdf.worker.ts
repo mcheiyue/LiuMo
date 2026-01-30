@@ -1,6 +1,8 @@
 /// <reference lib="webworker" />
 import jsPDF from 'jspdf';
-import { calculateLayout, CELL_SIZE, type LayoutConfig } from '../utils/layoutEngine';
+import { getLayoutStrategy } from '../utils/layout';
+import type { LayoutConfig, ContentStructure, LayoutItem } from '../utils/layout';
+import { CELL_SIZE } from '../utils/layout/constants';
 // import { subsetFont } from '../utils/fontSubsetting'; // Removed to avoid conflict with local HarfBuzz implementation
 
 // --- Types ---
@@ -182,16 +184,29 @@ self.onmessage = async (e: MessageEvent<WorkerPayload>) => {
 
     // 4. Calculate Layout
     // We recreate layoutDimensions here based on infinite scrolling logic for generation
-    const isVertical = layoutConfig.layoutDirection === 'vertical';
-    const layoutDimensions = {
-        rows: isVertical ? gridConfig.rowsPerPage : 999999,
-        cols: isVertical ? 999999 : gridConfig.colsPerPage,
-        gap: 0,
-        usableWidth: 0,
-        usableHeight: 0
+    const isVertical = layoutConfig.isVertical;
+    const strategy = getLayoutStrategy('GRID_STANDARD'); // Force Grid for PDF for now
+    
+    // Construct ContentStructure
+    const content: ContentStructure = {
+        paragraphs: [{
+            type: 'main',
+            lines: text ? text.split('\n') : [] // Split by newline or treat as single block? GridStandard flattens anyway.
+        }]
+    };
+    
+    // Config for PDF generation might differ slightly (rows/cols per page)
+    // But strategy expects container dims.
+    // We need to simulate a very large container to get all cells, then paginate manually.
+    const infiniteConfig: LayoutConfig = {
+        ...layoutConfig,
+        width: isVertical ? 999999 : gridConfig.colsPerPage * CELL_SIZE,
+        height: isVertical ? gridConfig.rowsPerPage * CELL_SIZE : 999999,
+        // Ensure gap/padding handled
     };
 
-    const cells = calculateLayout(text || "", layoutDimensions, layoutConfig);
+    const result = strategy.calculate(content, infiniteConfig);
+    const cells = result.items;
     console.log(`[Worker] Generated ${cells.length} cells.`);
 
     // 5. Render Pages
@@ -200,28 +215,37 @@ self.onmessage = async (e: MessageEvent<WorkerPayload>) => {
     const pxToMm = (px: number) => (px / MM_TO_PX) * gridConfig.scale;
     const cellMM = pxToMm(CELL_SIZE);
     
-    cells.forEach((cell) => {
-        // Calculate Page Index & Position
-        let pIndex = 0;
+    // Re-write loop to use index for robust paging
+    cells.forEach((cell: LayoutItem, index: number) => {
+        const rowsPerPage = gridConfig.rowsPerPage;
+        const colsPerPage = gridConfig.colsPerPage;
+        const charsPerPage = rowsPerPage * colsPerPage;
+        
+        const pIndex = Math.floor(index / charsPerPage);
+        const indexOnPage = index % charsPerPage;
+        
+        // Determine Visual Position on Page
         let visualColOnPage = 0;
         let visualRowOnPage = 0;
         
-        const rowsPerPage = gridConfig.rowsPerPage;
-        const colsPerPage = gridConfig.colsPerPage;
-
         if (isVertical) {
-           pIndex = Math.floor(cell.colIndex / colsPerPage);
-           visualColOnPage = cell.colIndex % colsPerPage;
-           visualRowOnPage = cell.rowIndex;
-           
-           if (layoutConfig.verticalColumnOrder === 'rtl') {
-              visualColOnPage = (colsPerPage - 1) - visualColOnPage;
-           }
+            // Vertical: Fill rows first (Top->Bottom), then Cols (Right->Left)
+            const colInPageParams = Math.floor(indexOnPage / rowsPerPage);
+            const rowInPageParams = indexOnPage % rowsPerPage;
+            
+            visualRowOnPage = rowInPageParams;
+            
+            if (layoutConfig.verticalColumnOrder === 'rtl') {
+                visualColOnPage = (colsPerPage - 1) - colInPageParams;
+            } else {
+                visualColOnPage = colInPageParams;
+            }
         } else {
-           pIndex = Math.floor(cell.rowIndex / rowsPerPage);
-           visualRowOnPage = cell.rowIndex % rowsPerPage;
-           visualColOnPage = cell.colIndex;
+            // Horizontal: Fill Cols first (Left->Right), then Rows (Top->Bottom)
+            visualRowOnPage = Math.floor(indexOnPage / colsPerPage);
+            visualColOnPage = indexOnPage % colsPerPage;
         }
+
 
         // Safety break
         if (pIndex > 200) return;

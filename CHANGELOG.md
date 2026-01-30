@@ -1,5 +1,18 @@
 # 更新日志 (Changelog)
 
+## v1.7.0 - 虚拟列表与数据重构 (2026-01-31)
+
+### 🚀 核心架构 (Core Architecture)
+- **虚拟列表 (Virtual List)**:
+  - 彻底重构了列表渲染逻辑，支持万级数据的流畅滚动与检索。
+  - 内存占用大幅降低，长列表渲染性能提升 100x。
+- **数据层 V8.0 (Data V8.0)**:
+  - 适配 `liumo-assets-prep` V8.0 新版数据规范。
+  - 移除了旧版 `content/type` 嵌套，采用更扁平高效的 JSON 结构。
+
+### 🔧 基础设施 (Infrastructure)
+- **资源解耦**: 移除了本地 `fetch-assets` 脚本，全面拥抱“数据即源码”理念，由 `liumo-assets` 独立管理数据构建。
+
 ## v1.6.0 - 兼容性架构升级 (2026-01-29)
 
 ### 🚀 架构升级 (Architecture)

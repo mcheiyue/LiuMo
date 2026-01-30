@@ -3,7 +3,8 @@ import jsPDF from 'jspdf';
 import { save, ask } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 
-import { type LayoutConfig, CELL_SIZE } from './layoutEngine';
+import { type LayoutConfig } from './layout/types';
+import { CELL_SIZE } from './layout/constants';
 import PdfWorker from '../workers/pdf.worker?worker';
 
 /**
@@ -132,19 +133,48 @@ export async function exportPdfVector(
       console.warn("[Vector Export] No font provided, using default.");
     }
 
-    const layoutConfig: LayoutConfig = {
-      layoutDirection: configStore.layoutDirection,
-      verticalColumnOrder: configStore.verticalColumnOrder,
-      borderMode: configStore.borderMode,
-      smartSnap: false,
-      // Deep clone fixedGrid to remove Vue Reactivity Proxies which cause DataCloneError in postMessage
-      fixedGrid: configStore.fixedGrid ? JSON.parse(JSON.stringify(configStore.fixedGrid)) : undefined
-    };
-
-    // 4. Calculate Page Capacity
+    const isVertical = configStore.layoutDirection === 'vertical';
     const MM_TO_PX = 3.7795;
     const containerWPx = contentW * MM_TO_PX;
     const containerHPx = contentH * MM_TO_PX;
+
+    const layoutConfig: LayoutConfig = {
+      // Mandatory fields for Strategy
+      width: containerWPx,
+      height: containerHPx,
+      fontSize: CELL_SIZE,
+      lineHeight: CELL_SIZE,
+      isVertical: isVertical,
+      columnGap: configStore.borderMode === 'none' ? 0 : 0, // PDF usually handles borders via grid drawing, gap 0 for text placement?
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      
+      // Optional/Legacy fields
+      layoutDirection: configStore.layoutDirection,
+      verticalColumnOrder: configStore.verticalColumnOrder,
+      borderMode: configStore.borderMode,
+      // smartSnap: false, // Removed from interface? Check types.ts. It was not added. 
+      // fixedGrid... // Not in interface.
+    };
+    
+    // Check types.ts for smartSnap and fixedGrid. I did not add them.
+    // I should add them if I want to pass them, or cast to any, or remove them if unused by strategy.
+    // Strategy doesn't use smartSnap or fixedGrid.
+    // Worker might? Worker receives payload.
+    // payload.layoutConfig.
+    
+    // Let's check what I added to types.ts:
+    // rowGap, verticalColumnOrder, borderMode, layoutDirection.
+    
+    // So smartSnap and fixedGrid will cause error if I put them in object typed as LayoutConfig.
+    // I will cast to any or just omit them from the typed object, and pass them separately if needed.
+    // Worker payload: { layoutConfig, gridConfig ... }
+    // gridConfig has rowsPerPage etc.
+    // fixedGrid logic is handled in exporter to calculate rowsPerPage.
+    // So worker doesn't need fixedGrid object, just the result in gridConfig.
+    
+    // smartSnap is for UI dragging. Not needed for PDF.
+    
+    // So I will remove smartSnap and fixedGrid from layoutConfig object construction.
     
     // Calculate Natural Capacity (How many cells fit strictly)
     // Gap = 0 for calculation simplicity

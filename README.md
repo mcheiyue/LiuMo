@@ -66,11 +66,7 @@ npm install
 # 或者使用 bun
 bun install
 
-# 3. 拉取静态资源 (关键步骤)
-# 从 liumo-assets 仓库自动下载最新的数据库与字体文件
-npm run fetch-assets
-
-# 4. 启动开发模式 (桌面端)
+# 3. 启动开发模式 (桌面端)
 npm run tauri dev
 # 或者
 bun tauri dev
