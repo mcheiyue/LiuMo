@@ -143,10 +143,85 @@ const TAG_DISPLAY_MAP: Record<string, string> = {
   '宋词三百首': '宋词三百首'
 };
 
+// === 新增: 朝代历史顺序 ===
+const DYNASTY_ORDER: string[] = [
+  '先秦', '春秋', '战国', 
+  '秦', '汉', '三国', 
+  '魏晋', '南北朝', '隋', 
+  '唐', '五代', '宋', 
+  '辽', '金', '元', 
+  '明', '清', '近代', '近现代', 
+  '现代', '当代',
+  // 特殊分类
+  '蒙学', '古文', '未知'
+];
+
+// 排序函数
+const sortByDynastyOrder = (dynasties: string[]): string[] => {
+  return [...dynasties].sort((a, b) => {
+    const indexA = DYNASTY_ORDER.indexOf(a);
+    const indexB = DYNASTY_ORDER.indexOf(b);
+    
+    // 如果都在列表中，按列表顺序
+    if (indexA !== -1 && indexB !== -1) {
+      return indexA - indexB;
+    }
+    
+    // 如果一个在列表，一个不在，在列表的排前面
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    
+    // 都不在列表中，按字母/原始顺序
+    return a.localeCompare(b);
+  });
+};
+
 const getTagDisplay = (tag: string) => TAG_DISPLAY_MAP[tag] || tag;
 
-const dynastyList = computed(() => ['全部', ...filterOptions.value.dynasties]);
-const tagList = computed(() => ['全部', ...filterOptions.value.tags]);
+// === 新增: 分类逻辑顺序 ===
+const TAG_ORDER: string[] = [
+  // 选集 (高频)
+  '唐诗三百首', 
+  '宋词三百首', 
+  'K12', 
+  // 体裁 (传统)
+  'shi',      // 古诗
+  'ci',       // 词
+  'qu',       // 曲
+  'wen',      // 文言文
+  'fu',       // 辞赋
+  // 现代
+  'modern'    // 现代诗
+];
+
+// 分类排序函数
+const sortByTagOrder = (tags: string[]): string[] => {
+  return [...tags].sort((a, b) => {
+    const indexA = TAG_ORDER.indexOf(a);
+    const indexB = TAG_ORDER.indexOf(b);
+    
+    // 都在列表中，按列表顺序
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    // 一个在列表，排前面
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    // 都不在，按数量(原始顺序)或字母
+    return a.localeCompare(b);
+  });
+};
+
+// 修改 tagList: 应用排序
+const dynastyList = computed(() => {
+  const sorted = sortByDynastyOrder(filterOptions.value.dynasties);
+  return ['全部', ...sorted];
+});
+
+const tagList = computed(() => {
+  // 过滤掉不在 TAG_DISPLAY_MAP 中的杂项标签（可选，保持界面整洁）
+  // 或者只对已知标签排序，未知标签放后面
+  const sorted = sortByTagOrder(filterOptions.value.tags);
+  return ['全部', ...sorted];
+});
 
 </script>
 

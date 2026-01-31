@@ -161,7 +161,12 @@ self.onmessage = async (e: MessageEvent<WorkerPayload>) => {
         paddingLeft: 0,
         paddingRight: 0,
         columns: isVertical ? 1000 : gridConfig.colsPerPage, // 无限列或固定列
-        isVertical: isVertical
+        isVertical: isVertical,
+        // Added for type compatibility
+        layoutDirection: isVertical ? 'vertical' : 'horizontal',
+        borderMode: 'full',
+        gridType: gridConfig.gridType,
+        gap: 0
     };
 
     const result = strategy.calculate(contentJson, engineConfig);

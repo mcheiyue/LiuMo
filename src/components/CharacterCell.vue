@@ -10,6 +10,7 @@ const props = withDefaults(defineProps<{
   width?: number;
   height?: number;
   fontSize?: number;
+  borderMode?: 'full' | 'lines-only' | 'none';
 }>(), {
   char: '',
   gridType: 'mizi',
@@ -17,11 +18,16 @@ const props = withDefaults(defineProps<{
   gridColor: 'var(--color-grid)',
   width: 96,
   height: 96,
-  fontSize: 60
+  fontSize: 64,
+  borderMode: 'full'
+});
+
+const showGrid = computed(() => {
+  return props.borderMode === 'full' && props.gridType !== 'none';
 });
 
 const gridPath = computed(() => {
-  if (!props.showGrid || props.gridType === 'none') return '';
+  if (!showGrid.value) return '';
   
   // Assuming 100x100 coordinate system internal to SVG
   switch (props.gridType) {
@@ -45,14 +51,14 @@ const gridPath = computed(() => {
     :style="{
       width: `${width}px`,
       height: `${height}px`,
-      backgroundColor: 'var(--color-paper)',
+      backgroundColor: 'transparent',
       border: 'none',
       boxSizing: 'border-box'
     }"
   >
     <!-- Grid Layer -->
     <svg 
-      v-if="showGrid && gridType !== 'none'" 
+      v-if="showGrid" 
       :style="{ display: 'block', stroke: gridColor }"
       viewBox="0 0 100 100" 
       class="absolute inset-0 w-full h-full pointer-events-none stroke-[1] fill-none"

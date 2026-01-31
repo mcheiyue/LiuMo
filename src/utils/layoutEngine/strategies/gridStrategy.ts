@@ -5,19 +5,9 @@ export const gridStrategy: ILayoutStrategy = {
   calculate(content: StructuredContent, config: LayoutConfig): LayoutResult {
     const { isVertical, gridSize, gap = 0, paddingLeft, paddingTop, paddingRight = 0, paddingBottom = 0, maxRows, borderMode } = config;
 
-    // Determine gaps based on borderMode and direction
-    let gapX = gap;
-    let gapY = gap;
-
-    if (borderMode === 'lines-only') {
-      if (isVertical) {
-        gapX = gap;
-        gapY = 0;
-      } else {
-        gapX = 0;
-        gapY = gap;
-      }
-    }
+    // Fixed gap logic: Always preserve gap space regardless of border mode
+    const gapX = gap;
+    const gapY = gap;
 
     const stepX = gridSize + gapX;
     const stepY = gridSize + gapY;

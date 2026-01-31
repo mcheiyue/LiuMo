@@ -10,35 +10,41 @@
 }
 
 :root {
-  background-color: var(--color-paper);
+  --color-background: var(--color-paper);
+  --shadow-paper: 0 4px 15px rgba(0, 0, 0, 0.15);
+  background-color: var(--color-background);
   color: var(--color-ink);
-  font-family: "KaiTi", "STKaiti", serif; /* Default to KaiTi for calligraphy feel */
-  --color-grid: rgba(61, 43, 31, 0.15); /* 焦墨淡色作为格子，比暗金更自然 */
+  font-family: "FlyFlowerSong", "KaiTi", "STKaiti", serif;
+  --color-grid: rgba(61, 43, 31, 0.15);
 }
 
-/* 深色模式 - 模拟古籍拓片/夜间阅读 (柔和版) */
+@font-face {
+  font-family: 'FlyFlowerSong';
+  src: url('/fonts/FlyFlowerSong.ttf') format('truetype');
+  font-display: swap;
+}
+
+/* Deep Dark Mode Configuration */
 .dark {
-  --color-paper: #2C241B;      /* 暖深胡桃木色 - 比纯黑更柔和 */
-  --color-ink: #D6C6B0;        /* 暖象牙白/米色 - 护眼 */
-  --color-theme: #CC9933;      /* 沉稳的暗金色 */
-  --color-cinnabar: #D65C5C;   /* 柔和的朱红，不刺眼 */
-  --color-inkstone: #8A7E72;   /* 暖灰 */
-  --color-grid: rgba(214, 198, 176, 0.12); /* 极淡的米色网格 */
+  --color-background: #18120E; /* Deep Dark Background */
+  --color-paper: #2C241B;      /* Walnut Paper */
+  --color-ink: #D6C6B0;        /* Ivory Ink */
+  --color-theme: #CC9933;      /* Dark Gold */
+  --color-cinnabar: #EF5350;   /* Brighter Red for visibility */
+  --color-inkstone: #8A7E72;
+  --color-grid: rgba(214, 198, 176, 0.12);
+  --shadow-paper: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08); /* Strong shadow + border */
 }
 
 .dark {
-  background-color: var(--color-paper);
+  background-color: var(--color-background);
   color: var(--color-ink);
 }
 
-/* Vertical writing mode utility */
-
-/* Vertical writing mode utility */
 .writing-vertical-rl {
   writing-mode: vertical-rl;
 }
 
-/* View Transitions API Animations */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
@@ -50,4 +56,3 @@
 ::view-transition-new(root) {
   z-index: 9999;
 }
-/* Removed incorrect .dark z-index inversion which hid the expansion animation */

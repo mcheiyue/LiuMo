@@ -7,7 +7,7 @@ export const useConfigStore = defineStore('config', () => {
   
   // Appearance
   const theme = ref<'system' | 'light' | 'dark'>('system');
-  const currentFont = ref<string>("");
+  const currentFont = ref<string>("FlyFlowerSong");
   const layoutDirection = ref<'vertical' | 'horizontal'>('vertical');
   // Order of columns/rows: 
   // Vertical: 'rtl' (default, right-to-left) or 'ltr' (left-to-right)
@@ -16,26 +16,13 @@ export const useConfigStore = defineStore('config', () => {
   const borderMode = ref<'full' | 'lines-only' | 'none'>('full');
   // gridType only active when borderMode === 'full'
   const gridType = ref<'mizi' | 'tianzi' | 'huigong' | 'none'>('mizi');
-  // Auto-detect poetry format to snap rows/cols
-  const smartSnap = ref(true);
-  
-  // Manual Grid Overrides
-  // Initialize with safe defaults.
-  // We use a watcher to ensure structure exists if restored state is partial/broken.
-  const fixedGrid = ref({
-    enabled: false,
-    rows: 10,
-    cols: 6
-  });
 
   // Font Face CSS (Base64) - Not persisted to avoid LocalStorage quota limits
   const fontFaceCss = ref<string>("");
   
   // Watcher to auto-repair state if needed
   watchEffect(() => {
-    if (!fixedGrid.value) {
-      fixedGrid.value = { enabled: false, rows: 10, cols: 6 };
-    }
+    // No auto-repair needed currently
   });
 
   function setFont(fontName: string, css?: string) {
@@ -58,8 +45,6 @@ export const useConfigStore = defineStore('config', () => {
     verticalColumnOrder,
     borderMode,
     gridType,
-    smartSnap,
-    fixedGrid,
     setFont,
     updateText
   };
@@ -73,9 +58,7 @@ export const useConfigStore = defineStore('config', () => {
       'layoutDirection', 
       'verticalColumnOrder', 
       'borderMode', 
-      'gridType', 
-      'smartSnap', 
-      'fixedGrid'
+      'gridType'
     ]
   } as any
 });

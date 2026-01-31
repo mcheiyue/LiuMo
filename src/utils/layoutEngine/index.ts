@@ -13,16 +13,23 @@ const strategies: Record<LayoutStrategy, ILayoutStrategy> = {
 
 // Default config
 const defaultConfig: LayoutConfig = {
-  fontSize: 32,
+  fontSize: 64,
   lineHeight: 48,
-  charWidth: 32,
-  gridSize: 40,
-  paddingTop: 60,
-  paddingBottom: 60,
-  paddingLeft: 40,
-  paddingRight: 40,
-  columns: 14,
-  isVertical: false
+  charWidth: 96,
+  gridSize: 96,
+  paddingTop: 32,
+  paddingBottom: 32,
+  paddingLeft: 32,
+  paddingRight: 32,
+  columns: 10,
+  isVertical: false,
+  
+  // New defaults
+  layoutDirection: 'horizontal',
+  verticalColumnOrder: 'rtl',
+  borderMode: 'full',
+  gridType: 'mizi',
+  gap: 3,
 };
 
 // Helper to detect strategy based on content

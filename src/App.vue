@@ -100,7 +100,7 @@ async function handleExport() {
 </script>
 
 <template>
-  <div class="h-screen w-screen flex flex-col overflow-hidden relative" style="background-color: var(--color-paper); color: var(--color-ink);">
+  <div class="h-screen w-screen flex flex-col overflow-hidden relative" style="background-color: var(--color-bg-base); color: var(--color-ink);">
     <FontDropZone @font-loaded="onFontLoaded" />
     <PoetrySelector v-if="showPoetrySelector" @select="onPoetrySelected" @close="showPoetrySelector = false" />
     <SettingsPanel 
@@ -108,7 +108,7 @@ async function handleExport() {
       @close="showSettings = false" 
     />
     
-    <header class="h-16 px-6 border-b flex justify-between items-center shadow-sm shrink-0 z-10" style="background-color: var(--color-paper); border-color: var(--color-grid);">
+    <header class="h-16 px-6 border-b flex justify-between items-center shadow-sm shrink-0 z-10" style="background-color: var(--color-bg-base); border-color: var(--color-grid);">
       <div class="flex items-center gap-2">
         <div class="w-8 h-8 text-white flex items-center justify-center font-serif text-lg rounded-sm" style="background-color: var(--color-cinnabar);">流</div>
         <h1 class="text-xl font-bold tracking-widest font-serif" style="color: var(--color-ink);">流摹 LiuMo</h1>
@@ -158,8 +158,6 @@ async function handleExport() {
         :border-mode="config.borderMode"
         :layout-direction="config.layoutDirection"
         :vertical-column-order="config.verticalColumnOrder"
-        :smart-snap="config.smartSnap"
-        :fixed-grid="config.fixedGrid"
         :font-face-css="config.fontFaceCss"
       />
     </main>

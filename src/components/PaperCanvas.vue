@@ -20,8 +20,7 @@ const {
   layoutDirection, 
   verticalColumnOrder, 
   borderMode, 
-  gridType, 
-  fixedGrid 
+  gridType 
 } = storeToRefs(configStore);
 
 // Dynamic Layout Calculation
@@ -31,14 +30,11 @@ const dynamicColumns = computed(() => {
   const gap = borderMode.value === 'none' ? 0 : 3;
   const itemSize = currentConfig.gridSize + gap;
   
-  if (configStore.fixedGrid.enabled && layoutDirection.value === 'horizontal') {
-    return configStore.fixedGrid.cols || 10;
-  }
-  
   const width = containerWidth.value;
-  if (width <= 0) return 10; // Default fallback
+  if (width <= 0) return 20; // Default fallback
   
-  return Math.max(1, Math.floor((width - padding) / itemSize));
+  // 最小保持 12 列（防止容器过窄导致一字一行的"伪竖排"现象）
+  return Math.max(12, Math.floor((width - padding) / itemSize));
 });
 
 const dynamicRows = computed(() => {
@@ -46,10 +42,6 @@ const dynamicRows = computed(() => {
   const padding = currentConfig.paddingTop + currentConfig.paddingBottom;
   const gap = borderMode.value === 'none' ? 0 : 3;
   const itemSize = currentConfig.gridSize + gap;
-  
-  if (configStore.fixedGrid.enabled && configStore.fixedGrid.rows) {
-    return configStore.fixedGrid.rows;
-  }
   
   const height = containerHeight.value;
   if (height <= 0) return 10; // Default fallback
@@ -64,11 +56,11 @@ watchEffect(() => {
   layoutConfig.value = {
     ...layoutConfig.value,
     layoutDirection: layoutDirection.value,
+    isVertical: layoutDirection.value === 'vertical',
     verticalColumnOrder: verticalColumnOrder.value,
     borderMode: borderMode.value,
     gridType: gridType.value,
     gap,
-    fixedGrid: fixedGrid.value,
     // For horizontal layout, columns controls the wrapping width
     // For vertical layout, we might use this as 'rows' logically or columns (x-axis count)
     // Based on requirements: "columns field usage: layoutDirection.value === 'horizontal' ? dynamicColumns.value : dynamicColumns.value"
@@ -95,66 +87,83 @@ const visibleItems = computed(() => {
   return layoutResult.value.getViewportItems(scrollTop.value, containerHeight.value || 800);
 });
 
-const gridLayerStyle = computed(() => {
-  const config = layoutConfig.value;
-  const {
-    paddingLeft = 0,
-    paddingTop = 0,
-    paddingRight = 0,
-    paddingBottom = 0,
-    borderMode,
-    layoutDirection,
-    gridSize,
-    gap = 0,
-    verticalColumnOrder,
-    isVertical
-  } = config;
-  
-  const width = Math.max(0, totalWidth.value - paddingLeft - paddingRight);
-  const height = Math.max(0, totalHeight.value - paddingTop - paddingBottom);
-  
-  const style: Record<string, string> = {
-    left: `${paddingLeft}px`,
-    top: `${paddingTop}px`,
-    width: `${width}px`,
-    height: `${height}px`,
-    backgroundColor: 'transparent',
-  };
-  
-  if (borderMode === 'none') return style;
-
-  const cinnabar = 'var(--color-cinnabar)';
-  const transparent = 'transparent';
-  const unitSize = gridSize + gap;
-
-  if (borderMode === 'lines-only') {
-    if (layoutDirection === 'horizontal') {
-       // Horizontal lines (rows)
-       style.backgroundImage = `linear-gradient(to bottom, ${transparent} ${gridSize}px, ${cinnabar} ${gridSize}px, ${cinnabar} ${unitSize}px, ${transparent} ${unitSize}px)`;
-       style.backgroundSize = `100% ${unitSize}px`;
-    } else {
-       // Vertical lines (cols)
-       style.backgroundImage = `linear-gradient(to right, ${transparent} ${gridSize}px, ${cinnabar} ${gridSize}px, ${cinnabar} ${unitSize}px, ${transparent} ${unitSize}px)`;
-       style.backgroundSize = `${unitSize}px 100%`;
-       
-       if (verticalColumnOrder === 'rtl') {
-         style.backgroundPosition = 'right top';
-       }
-    }
-  } else if (borderMode === 'full') {
-    const hGrad = `linear-gradient(to bottom, ${transparent} ${gridSize}px, ${cinnabar} ${gridSize}px, ${cinnabar} ${unitSize}px, ${transparent} ${unitSize}px)`;
-    const vGrad = `linear-gradient(to right, ${transparent} ${gridSize}px, ${cinnabar} ${gridSize}px, ${cinnabar} ${unitSize}px, ${transparent} ${unitSize}px)`;
+  const gridLayerStyle = computed(() => {
+    const config = layoutConfig.value;
+    const {
+      paddingLeft = 0,
+      paddingTop = 0,
+      paddingRight = 0,
+      paddingBottom = 0,
+      borderMode,
+      gridSize,
+      gap = 0,
+      verticalColumnOrder,
+      isVertical
+    } = config;
     
-    style.backgroundImage = `${hGrad}, ${vGrad}`;
-    style.backgroundSize = `100% ${unitSize}px, ${unitSize}px 100%`;
+    const width = Math.max(0, totalWidth.value - paddingLeft - paddingRight);
+    const height = Math.max(0, totalHeight.value - paddingTop - paddingBottom);
     
-    if (isVertical && verticalColumnOrder === 'rtl') {
-       style.backgroundPosition = 'right top';
-    }
-  }
+    const style: Record<string, string> = {
+      position: 'absolute',
+      left: `${paddingLeft}px`,
+      top: `${paddingTop}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+      backgroundColor: 'transparent',
+      zIndex: '0',
+      pointerEvents: 'none',
+    };
+    
+    if (borderMode === 'none') return style;
 
-  return style;
-});
+    const cinnabar = 'var(--color-cinnabar)';
+    const transparent = 'transparent';
+    const unitSize = gridSize + gap;
+
+    // Define gradients with line at the END (Right or Bottom)
+    // Line at Right: [Transparent Content][Color Line]
+    const lineRight = `linear-gradient(to right, ${transparent} ${gridSize}px, ${cinnabar} ${gridSize}px, ${cinnabar} ${unitSize}px)`;
+    // Line at Bottom: [Transparent Content][Color Line]
+    const lineBottom = `linear-gradient(to bottom, ${transparent} ${gridSize}px, ${cinnabar} ${gridSize}px, ${cinnabar} ${unitSize}px)`;
+
+    if (borderMode === 'lines-only') {
+      if (isVertical) {
+         // Vertical layout: we need Vertical Lines (between columns)
+         style.backgroundImage = lineRight;
+         style.backgroundSize = `${unitSize}px 100%`;
+         
+         if (verticalColumnOrder === 'rtl') {
+           // RTL: Line should be on the LEFT of the column
+           // Shift right by gap to hide the right-side line and reveal the previous tile's line on the left
+           style.backgroundPosition = `right -${gap}px top 0`;
+         } else {
+           // LTR: Line should be on the RIGHT of the column
+           style.backgroundPosition = 'left top';
+         }
+      } else {
+         // Horizontal layout: we need Horizontal Lines (between rows)
+         style.backgroundImage = lineBottom;
+         style.backgroundSize = `100% ${unitSize}px`;
+         style.backgroundPosition = 'left top';
+      }
+    } else if (borderMode === 'full') {
+      // Full grid: Both horizontal and vertical lines
+      // Layer 1: Horizontal lines (lineBottom)
+      // Layer 2: Vertical lines (lineRight)
+      style.backgroundImage = `${lineBottom}, ${lineRight}`;
+      style.backgroundSize = `100% ${unitSize}px, ${unitSize}px 100%`;
+      
+      if (isVertical && verticalColumnOrder === 'rtl') {
+         // Horizontal lines: default; Vertical lines: shifted for RTL
+         style.backgroundPosition = `left top, right -${gap}px top 0`;
+      } else {
+         style.backgroundPosition = 'left top, left top';
+      }
+    }
+
+    return style;
+  });
 
 const onScroll = (e: Event) => {
   const target = e.target as HTMLElement;
@@ -178,23 +187,25 @@ watch(() => layoutConfig.value, (newConfig) => {
 <template>
   <div 
     ref="containerRef" 
-    class="relative w-full h-full overflow-auto bg-[var(--color-paper)] flex transition-colors duration-300"
+    class="relative w-full h-full overflow-auto bg-transparent flex transition-colors duration-300"
     @scroll="onScroll"
   >
     <!-- Content Wrapper with auto margins for centering -->
     <div 
       v-if="layoutResult"
-      class="relative m-auto flex-shrink-0 transition-all duration-300 ease-out box-content"
+      class="relative m-auto flex-shrink-0 transition-all duration-300 ease-out box-content bg-[var(--color-background)]"
       :style="{ 
         width: `${totalWidth}px`, 
         height: `${totalHeight}px`,
+        boxShadow: 'var(--shadow-paper)',
+        border: 'var(--border-card)'
       }"
     >
       <!-- Red Background Layer (The Grid Lines) -->
       <!-- Only visible within the content area minus padding -->
       <div 
         v-if="layoutConfig.borderMode !== 'none'"
-        class="absolute rounded-sm transition-all duration-300"
+        class="grid-background absolute rounded-sm transition-all duration-300"
         :style="gridLayerStyle"
       ></div>
 
@@ -205,7 +216,7 @@ watch(() => layoutConfig.value, (newConfig) => {
         :char="item.char"
         :width="item.width"
         :height="item.height"
-        :font-size="layoutConfig.fontSize"
+        :font-size="item.fontSize || layoutConfig.fontSize"
         :style="{
           position: 'absolute',
           transform: `translate(${item.x}px, ${item.y}px)`,

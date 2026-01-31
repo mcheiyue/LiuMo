@@ -20,6 +20,7 @@ export interface RenderItem {
   paragraphType: ParagraphType;
   width?: number;
   height?: number;
+  fontSize?: number;
 }
 
 // 兼容 PDF 导出所需的别名
@@ -34,6 +35,8 @@ export interface LayoutResult {
   getViewportItems: (scrollTop: number, viewHeight: number) => RenderItem[];
 }
 
+export type GridType = 'mizi' | 'tianzi' | 'huigong' | 'none';
+
 export interface LayoutConfig {
   fontSize: number;
   lineHeight: number;
@@ -45,6 +48,14 @@ export interface LayoutConfig {
   paddingRight: number;
   columns: number;
   isVertical: boolean;
+  
+  // New properties for full reactivity
+  layoutDirection: 'vertical' | 'horizontal';
+  verticalColumnOrder?: 'rtl' | 'ltr';
+  borderMode: 'full' | 'lines-only' | 'none';
+  gridType: string; // Using string to support custom grid types if needed, but primarily GridType
+  gap: number;
+  maxRows?: number;
 }
 
 export interface ILayoutStrategy {

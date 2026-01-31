@@ -148,7 +148,12 @@ export async function exportPdfVector(
       paddingLeft: 0,
       paddingRight: 0,
       columns: 1000, // Virtual infinite columns for calculation
-      isVertical: isVertical
+      isVertical: isVertical,
+      // Added for type compatibility
+      layoutDirection: isVertical ? 'vertical' : 'horizontal',
+      borderMode: configStore.borderMode || 'full',
+      gridType: configStore.gridType || 'mizi',
+      gap: 0
     };
 
     // 4. Calculate Grid Parameters (Fixed or Auto)
