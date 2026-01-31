@@ -76,9 +76,10 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          EXE_PATH=$(find src-tauri/target/release/bundle/nsis -name "*.exe" | head -n 1)
-          NEW_NAME="LiuMo_Lite_${VERSION}_x64_setup.exe"
-          mv "$EXE_PATH" "release_dist/$NEW_NAME"
+          # 提取单文件 exe (Portable)
+          EXE_PATH="src-tauri/target/release/liumo.exe"
+          NEW_NAME="LiuMo_Lite_${VERSION}_x64.exe"
+          cp "$EXE_PATH" "release_dist/$NEW_NAME"
           echo "Packed: $NEW_NAME"
 
       # ========================================================
@@ -100,9 +101,10 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          EXE_PATH=$(find src-tauri/target/release/bundle/nsis -name "*.exe" | head -n 1)
-          NEW_NAME="LiuMo_Full_${VERSION}_x64_setup.exe"
-          mv "$EXE_PATH" "release_dist/$NEW_NAME"
+          # 提取单文件 exe (Portable)
+          EXE_PATH="src-tauri/target/release/liumo.exe"
+          NEW_NAME="LiuMo_Full_${VERSION}_x64.exe"
+          cp "$EXE_PATH" "release_dist/$NEW_NAME"
           echo "Packed: $NEW_NAME"
 
       # ========================================================
