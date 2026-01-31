@@ -1,43 +1,83 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watchEffect } from 'vue';
+import { ref, computed, watchEffect, watch, nextTick } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useElementSize } from '@vueuse/core';
 import { usePoetryStore } from '@/stores/poetry';
 import { useConfigStore } from '@/stores/config'; // Import ConfigStore
 import { useLayoutEngine } from '@/utils/layoutEngine';
 import CharacterCell from './CharacterCell.vue';
 
 const containerRef = ref<HTMLElement>();
+const { width: containerWidth, height: containerHeight } = useElementSize(containerRef);
 const scrollTop = ref(0);
-const viewHeight = ref(800); 
 
 const poetryStore = usePoetryStore();
 const configStore = useConfigStore(); // Use ConfigStore
 const { config: layoutConfig, calculate } = useLayoutEngine();
 
 // Bridge: Sync ConfigStore -> LayoutEngine Config
+const { 
+  layoutDirection, 
+  verticalColumnOrder, 
+  borderMode, 
+  gridType, 
+  fixedGrid 
+} = storeToRefs(configStore);
+
+// Dynamic Layout Calculation
+const dynamicColumns = computed(() => {
+  const currentConfig = layoutConfig.value;
+  const padding = currentConfig.paddingLeft + currentConfig.paddingRight;
+  const gap = borderMode.value === 'none' ? 0 : 3;
+  const itemSize = currentConfig.gridSize + gap;
+  
+  if (configStore.fixedGrid.enabled && layoutDirection.value === 'horizontal') {
+    return configStore.fixedGrid.cols || 10;
+  }
+  
+  const width = containerWidth.value;
+  if (width <= 0) return 10; // Default fallback
+  
+  return Math.max(1, Math.floor((width - padding) / itemSize));
+});
+
+const dynamicRows = computed(() => {
+  const currentConfig = layoutConfig.value;
+  const padding = currentConfig.paddingTop + currentConfig.paddingBottom;
+  const gap = borderMode.value === 'none' ? 0 : 3;
+  const itemSize = currentConfig.gridSize + gap;
+  
+  if (configStore.fixedGrid.enabled && configStore.fixedGrid.rows) {
+    return configStore.fixedGrid.rows;
+  }
+  
+  const height = containerHeight.value;
+  if (height <= 0) return 10; // Default fallback
+
+  return Math.max(1, Math.floor((height - padding) / itemSize));
+});
+
 watchEffect(() => {
   // Map ConfigStore fields to LayoutConfig
-  // Note: LayoutConfig is generic (fontSize, gridSize). 
-  // ConfigStore might have different names or logic.
-  // We need to decide how fontSize is derived. 
-  // ConfigStore doesn't seem to have fontSize directly? 
-  // It has `fixedGrid` (rows/cols).
-  // If `fixedGrid` is enabled, we derive fontSize from canvas dimensions?
-  // Or we use a default scaler?
+  const gap = borderMode.value === 'none' ? 0 : 3;
   
-  // For V8.0 simplified fix:
-  // Let's assume some defaults or add fontSize to ConfigStore later.
-  // For now, we update what we can.
-  
-  // If ConfigStore implies dynamic sizing based on rows/cols:
-  // V8.0 LayoutEngine supports explicit fontSize/gridSize.
-  // Let's keep LayoutEngine defaults for now but allow overriding if ConfigStore has relevant fields.
-  
-  // Actually, users want to change font size. 
-  // If ConfigStore lacks it, we should add it or use fixedGrid logic.
-  // Assuming standard view:
-  
-  // Update Grid Type for rendering (passed to cell, not engine calculation usually, 
-  // unless grid size depends on it)
+  layoutConfig.value = {
+    ...layoutConfig.value,
+    layoutDirection: layoutDirection.value,
+    verticalColumnOrder: verticalColumnOrder.value,
+    borderMode: borderMode.value,
+    gridType: gridType.value,
+    gap,
+    fixedGrid: fixedGrid.value,
+    // For horizontal layout, columns controls the wrapping width
+    // For vertical layout, we might use this as 'rows' logically or columns (x-axis count)
+    // Based on requirements: "columns field usage: layoutDirection.value === 'horizontal' ? dynamicColumns.value : dynamicColumns.value"
+    // Wait, the requirement says "layoutDirection.value === 'horizontal' ? dynamicColumns.value : dynamicColumns.value"
+    // which simplifies to just dynamicColumns.value.
+    // However, the text also says "(Note: in vertical mode this columns param actually represents column count (x-axis count), needs Phase 3 logic. For now set to dynamicColumns to ensure width adaptation)"
+    columns: dynamicColumns.value,
+    maxRows: dynamicRows.value
+  };
 });
 
 // Recalculate layout when content or config changes
@@ -47,10 +87,73 @@ const layoutResult = computed(() => {
 });
 
 const totalHeight = computed(() => layoutResult.value?.totalHeight || 0);
+const totalWidth = computed(() => layoutResult.value?.totalWidth || 0);
 
 const visibleItems = computed(() => {
   if (!layoutResult.value) return [];
-  return layoutResult.value.getViewportItems(scrollTop.value, viewHeight.value);
+  // Use containerHeight instead of viewHeight
+  return layoutResult.value.getViewportItems(scrollTop.value, containerHeight.value || 800);
+});
+
+const gridLayerStyle = computed(() => {
+  const config = layoutConfig.value;
+  const {
+    paddingLeft = 0,
+    paddingTop = 0,
+    paddingRight = 0,
+    paddingBottom = 0,
+    borderMode,
+    layoutDirection,
+    gridSize,
+    gap = 0,
+    verticalColumnOrder,
+    isVertical
+  } = config;
+  
+  const width = Math.max(0, totalWidth.value - paddingLeft - paddingRight);
+  const height = Math.max(0, totalHeight.value - paddingTop - paddingBottom);
+  
+  const style: Record<string, string> = {
+    left: `${paddingLeft}px`,
+    top: `${paddingTop}px`,
+    width: `${width}px`,
+    height: `${height}px`,
+    backgroundColor: 'transparent',
+  };
+  
+  if (borderMode === 'none') return style;
+
+  const cinnabar = 'var(--color-cinnabar)';
+  const transparent = 'transparent';
+  const unitSize = gridSize + gap;
+
+  if (borderMode === 'lines-only') {
+    if (layoutDirection === 'horizontal') {
+       // Horizontal lines (rows)
+       style.backgroundImage = `linear-gradient(to bottom, ${transparent} ${gridSize}px, ${cinnabar} ${gridSize}px, ${cinnabar} ${unitSize}px, ${transparent} ${unitSize}px)`;
+       style.backgroundSize = `100% ${unitSize}px`;
+    } else {
+       // Vertical lines (cols)
+       style.backgroundImage = `linear-gradient(to right, ${transparent} ${gridSize}px, ${cinnabar} ${gridSize}px, ${cinnabar} ${unitSize}px, ${transparent} ${unitSize}px)`;
+       style.backgroundSize = `${unitSize}px 100%`;
+       
+       if (verticalColumnOrder === 'rtl') {
+         style.backgroundPosition = 'right top';
+       }
+    }
+  } else if (borderMode === 'full') {
+    const hGrad = `linear-gradient(to bottom, ${transparent} ${gridSize}px, ${cinnabar} ${gridSize}px, ${cinnabar} ${unitSize}px, ${transparent} ${unitSize}px)`;
+    const vGrad = `linear-gradient(to right, ${transparent} ${gridSize}px, ${cinnabar} ${gridSize}px, ${cinnabar} ${unitSize}px, ${transparent} ${unitSize}px)`;
+    
+    style.backgroundImage = `${hGrad}, ${vGrad}`;
+    style.backgroundSize = `100% ${unitSize}px, ${unitSize}px 100%`;
+    
+    if (isVertical && verticalColumnOrder === 'rtl') {
+       style.backgroundPosition = 'right top';
+    }
+  }
+
+  return style;
 });
 
 const onScroll = (e: Event) => {
@@ -58,47 +161,44 @@ const onScroll = (e: Event) => {
   scrollTop.value = target.scrollTop;
 };
 
-// ... ResizeObserver code ...
+// No ResizeObserver needed anymore thanks to useElementSize
 
-let resizeObserver: ResizeObserver | null = null;
-
-onMounted(() => {
-  if (containerRef.value) {
-    viewHeight.value = containerRef.value.clientHeight;
-    
-    resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        viewHeight.value = entry.contentRect.height;
+watch(() => layoutConfig.value, (newConfig) => {
+  if (newConfig.isVertical && newConfig.verticalColumnOrder === 'rtl') {
+    nextTick(() => {
+      if (containerRef.value) {
+        containerRef.value.scrollLeft = containerRef.value.scrollWidth;
       }
     });
-    resizeObserver.observe(containerRef.value);
   }
-});
+}, { deep: true, immediate: true });
 
-onUnmounted(() => {
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-  }
-});
 </script>
 
 <template>
   <div 
     ref="containerRef" 
-    class="relative w-full h-full overflow-y-auto overflow-x-hidden bg-[var(--color-bg-canvas)]"
+    class="relative w-full h-full overflow-auto bg-[var(--color-paper)] flex transition-colors duration-300"
     @scroll="onScroll"
   >
-    <!-- Placeholder for scrolling height -->
+    <!-- Content Wrapper with auto margins for centering -->
     <div 
+      v-if="layoutResult"
+      class="relative m-auto flex-shrink-0 transition-all duration-300 ease-out box-content"
       :style="{ 
-        height: `${totalHeight}px`, 
-        width: '1px' 
+        width: `${totalWidth}px`, 
+        height: `${totalHeight}px`,
       }"
-      class="absolute top-0 left-0"
-    ></div>
-    
-    <!-- Render Layer -->
-    <div v-if="layoutResult" class="absolute top-0 left-0 w-full h-full pointer-events-none">
+    >
+      <!-- Red Background Layer (The Grid Lines) -->
+      <!-- Only visible within the content area minus padding -->
+      <div 
+        v-if="layoutConfig.borderMode !== 'none'"
+        class="absolute rounded-sm transition-all duration-300"
+        :style="gridLayerStyle"
+      ></div>
+
+      <!-- Render Items -->
       <CharacterCell
         v-for="item in visibleItems"
         :key="`${item.row}-${item.col}`"
@@ -110,18 +210,19 @@ onUnmounted(() => {
           position: 'absolute',
           transform: `translate(${item.x}px, ${item.y}px)`,
           willChange: 'transform',
-          fontFamily: configStore.currentFont || 'inherit' // Apply Font
+          fontFamily: configStore.currentFont || 'inherit'
         }"
-        :show-grid="configStore.borderMode !== 'none'" 
-        :grid-type="configStore.gridType"
+        :border-mode="layoutConfig.borderMode"
+        :show-grid="layoutConfig.borderMode === 'full'"
+        :grid-type="(layoutConfig.gridType as any)"
         :grid-color="'var(--color-grid)'"
       />
     </div>
-    
+
     <!-- Empty State -->
     <div 
       v-else 
-      class="flex items-center justify-center w-full h-full text-[var(--color-text-light)]"
+      class="m-auto text-[var(--color-text-light)]"
     >
       <p>请选择一首诗词</p>
     </div>
