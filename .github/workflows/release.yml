@@ -42,8 +42,8 @@ jobs:
         run: |
           # Replace <user> with actual owner if known, or use dynamic
           # Since this runs in liumo repo, assume assets repo is sibling or hardcoded?
-          # Assuming same owner: ${{ github.repository_owner }}/liumo-assets-prep
-          gh release download --repo ${{ github.repository_owner }}/liumo-assets-prep --pattern "*.db.gz" --dir assets_download
+          # Assuming same owner: ${{ github.repository_owner }}/LiuMo-assets
+          gh release download --repo ${{ github.repository_owner }}/LiuMo-assets --pattern "*.db.gz" --dir assets_download
 
       - name: Extract Release Notes
         id: extract_notes
