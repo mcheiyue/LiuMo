@@ -3,8 +3,8 @@ import jsPDF from 'jspdf';
 import { save, ask } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 
-import { type LayoutConfig } from './layout/types';
-import { CELL_SIZE } from './layout/constants';
+import { type LayoutConfig } from './layoutEngine/types';
+import { CELL_SIZE } from './layoutEngine/constants';
 import PdfWorker from '../workers/pdf.worker?worker';
 
 /**
@@ -91,8 +91,7 @@ export async function exportPdfVector(
       return false;
     }
 
-    // 1. Initialize jsPDF
-    // A4: 210mm x 297mm
+    // 1. Initialize jsPDF (Instance only used for final checks if needed, main logic in worker)
     const doc = new jsPDF({
       orientation: 'p',
       unit: 'mm',
@@ -106,7 +105,6 @@ export async function exportPdfVector(
     const contentH = pageHeight - margin * 2;
 
     // 2. Font Handling
-    // We prepare the base64 string here, but actual registration happens in Worker
     let pureBase64: string | null = null;
     
     if (finalFontBase64) { 
@@ -133,51 +131,27 @@ export async function exportPdfVector(
       console.warn("[Vector Export] No font provided, using default.");
     }
 
+    // 3. Prepare Layout Config for V8.0 Engine
     const isVertical = configStore.layoutDirection === 'vertical';
     const MM_TO_PX = 3.7795;
     const containerWPx = contentW * MM_TO_PX;
     const containerHPx = contentH * MM_TO_PX;
 
+    // V8.0 LayoutConfig (from layoutEngine/types.ts)
     const layoutConfig: LayoutConfig = {
-      // Mandatory fields for Strategy
-      width: containerWPx,
-      height: containerHPx,
       fontSize: CELL_SIZE,
-      lineHeight: CELL_SIZE,
-      isVertical: isVertical,
-      columnGap: configStore.borderMode === 'none' ? 0 : 0, // PDF usually handles borders via grid drawing, gap 0 for text placement?
-      padding: { top: 0, right: 0, bottom: 0, left: 0 },
-      
-      // Optional/Legacy fields
-      layoutDirection: configStore.layoutDirection,
-      verticalColumnOrder: configStore.verticalColumnOrder,
-      borderMode: configStore.borderMode,
-      // smartSnap: false, // Removed from interface? Check types.ts. It was not added. 
-      // fixedGrid... // Not in interface.
+      lineHeight: CELL_SIZE * 1.5, // Slightly larger for readability
+      charWidth: CELL_SIZE,
+      gridSize: CELL_SIZE,
+      paddingTop: 0,
+      paddingBottom: 0,
+      paddingLeft: 0,
+      paddingRight: 0,
+      columns: 1000, // Virtual infinite columns for calculation
+      isVertical: isVertical
     };
-    
-    // Check types.ts for smartSnap and fixedGrid. I did not add them.
-    // I should add them if I want to pass them, or cast to any, or remove them if unused by strategy.
-    // Strategy doesn't use smartSnap or fixedGrid.
-    // Worker might? Worker receives payload.
-    // payload.layoutConfig.
-    
-    // Let's check what I added to types.ts:
-    // rowGap, verticalColumnOrder, borderMode, layoutDirection.
-    
-    // So smartSnap and fixedGrid will cause error if I put them in object typed as LayoutConfig.
-    // I will cast to any or just omit them from the typed object, and pass them separately if needed.
-    // Worker payload: { layoutConfig, gridConfig ... }
-    // gridConfig has rowsPerPage etc.
-    // fixedGrid logic is handled in exporter to calculate rowsPerPage.
-    // So worker doesn't need fixedGrid object, just the result in gridConfig.
-    
-    // smartSnap is for UI dragging. Not needed for PDF.
-    
-    // So I will remove smartSnap and fixedGrid from layoutConfig object construction.
-    
-    // Calculate Natural Capacity (How many cells fit strictly)
-    // Gap = 0 for calculation simplicity
+
+    // 4. Calculate Grid Parameters (Fixed or Auto)
     const capacityCols = Math.floor(containerWPx / CELL_SIZE);
     const capacityRows = Math.floor(containerHPx / CELL_SIZE);
     
@@ -198,37 +172,25 @@ export async function exportPdfVector(
       scale = Math.min(scaleW, scaleH);
       rowsPerPage = userRows;
       colsPerPage = userCols;
-    } else {
-        // Auto mode
-        // For Horizontal: fixed Cols (capacity), fixed Rows (capacity)
-        // For Vertical: fixed Rows (capacity), fixed Cols (capacity)
-        // We use the capacity calculated above.
-        // And keep scale = 1.0 (relative to MM_TO_PX)
-        // Wait, if 96px * 7 > containerWPx (due to gap), we might need slight scale down?
-        // LayoutEngine uses gap.
-        // Let's rely on margins for now. 15mm margin is generous.
     }
 
     console.log(`[Vector Export] Grid: ${rowsPerPage} rows x ${colsPerPage} cols. Scale: ${scale}`);
 
-    console.log(`[Vector Export] Grid: ${rowsPerPage} rows x ${colsPerPage} cols. Scale: ${scale}`);
-    
-    // Safety check: Ensure rows/cols are valid
+    // Safety check
     if (rowsPerPage <= 0 || colsPerPage <= 0) {
         throw new Error(`Invalid Grid Calculation: ${rowsPerPage}x${colsPerPage}`);
     }
 
-    // 5. Calculate FULL Layout & Render in Worker
-    // We delegate the heavy lifting (Layout + Subsetting + Rendering) to the Web Worker
-    
-    // Prepare Grid Config
+    // 5. Prepare Grid Config
     const gridConfig = {
         rowsPerPage,
         colsPerPage,
         scale,
-        gridType: configStore.gridType
+        gridType: configStore.gridType,
+        width: containerWPx,
+        height: containerHPx
     };
-    
+
     // 6. Spawn Worker
     return new Promise((resolve, reject) => {
         console.log("[Vector Export] Spawning Worker...");
@@ -282,15 +244,18 @@ export async function exportPdfVector(
             return;
         }
 
+        // Determine Strategy
+        const strategyName = configStore.strategy || 'GRID_STANDARD';
+
         // Post Message
         const payload = {
             text: configStore.text || "",
             fontBuffer,
             layoutConfig,
-            gridConfig
+            gridConfig,
+            strategy: strategyName
         };
         
-        // Transfer the buffer to avoid copying 15MB
         console.log("[Vector Export] Posting message to worker...");
         worker.postMessage(payload, [fontBuffer]);
     });

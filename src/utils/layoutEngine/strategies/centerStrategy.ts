@@ -10,12 +10,10 @@ export const centerStrategy: ILayoutStrategy = {
 
     for (const para of content.paragraphs) {
       // Standard font for center strategy usually
-      let fontSize = config.fontSize;
       let lineHeight = config.lineHeight;
       let charWidth = config.charWidth;
 
       if (para.type === 'small' || para.type === 'note') {
-          fontSize = config.fontSize * 0.7;
           lineHeight = config.lineHeight * 0.8;
           charWidth = config.charWidth * 0.7;
       }

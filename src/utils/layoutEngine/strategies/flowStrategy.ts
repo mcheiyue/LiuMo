@@ -10,16 +10,13 @@ export const flowStrategy: ILayoutStrategy = {
 
     for (const para of content.paragraphs) {
       // Determine font size based on paragraph type
-      let fontSize = config.fontSize;
       let lineHeight = config.lineHeight;
       let charWidth = config.charWidth;
       
       if (para.type === 'small' || para.type === 'note') {
-          fontSize = config.fontSize * 0.6;
           lineHeight = config.lineHeight * 0.7;
           charWidth = config.charWidth * 0.6;
       } else if (para.type === 'preface') {
-          fontSize = config.fontSize * 0.8;
           lineHeight = config.lineHeight * 0.8;
           charWidth = config.charWidth * 0.8;
       }

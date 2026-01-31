@@ -18,8 +18,20 @@ export interface RenderItem {
   row: number;
   col: number;
   paragraphType: ParagraphType;
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
+}
+
+// 兼容 PDF 导出所需的别名
+export type LayoutItem = RenderItem;
+
+export interface LayoutResult {
+
+  items: RenderItem[];
+  totalHeight: number;
+  totalWidth: number;
+  lineOffsets: number[];
+  getViewportItems: (scrollTop: number, viewHeight: number) => RenderItem[];
 }
 
 export interface LayoutConfig {
@@ -33,14 +45,6 @@ export interface LayoutConfig {
   paddingRight: number;
   columns: number;
   isVertical: boolean;
-}
-
-export interface LayoutResult {
-  items: RenderItem[];
-  totalHeight: number;
-  totalWidth: number;
-  lineOffsets: number[];
-  getViewportItems: (scrollTop: number, viewHeight: number) => RenderItem[];
 }
 
 export interface ILayoutStrategy {

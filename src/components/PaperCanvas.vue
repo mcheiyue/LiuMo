@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, watchEffect } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watchEffect } from 'vue';
 import { usePoetryStore } from '@/stores/poetry';
 import { useConfigStore } from '@/stores/config'; // Import ConfigStore
 import { useLayoutEngine } from '@/utils/layoutEngine';
@@ -11,7 +11,7 @@ const viewHeight = ref(800);
 
 const poetryStore = usePoetryStore();
 const configStore = useConfigStore(); // Use ConfigStore
-const { config: layoutConfig, calculate, updateConfig } = useLayoutEngine();
+const { config: layoutConfig, calculate } = useLayoutEngine();
 
 // Bridge: Sync ConfigStore -> LayoutEngine Config
 watchEffect(() => {
@@ -43,7 +43,6 @@ watchEffect(() => {
 // Recalculate layout when content or config changes
 const layoutResult = computed(() => {
   if (!poetryStore.parsedContent) return null;
-  const strategy = poetryStore.layoutStrategy;
   return calculate(poetryStore.parsedContent, layoutConfig.value);
 });
 
