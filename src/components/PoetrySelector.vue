@@ -132,15 +132,48 @@ function selectPoetry(poetry: PoetryDisplay) {
 
 // UI Helpers
 const TAG_DISPLAY_MAP: Record<string, string> = {
+  // Genre tags
   'shi': '古诗',
   'ci': '词',
   'qu': '曲',
   'wen': '文言文',
   'fu': '辞赋',
-  'K12': '课本必背',
   'modern': '现代诗',
-  '唐诗三百首': '唐诗三百首',
-  '宋词三百首': '宋词三百首'
+  'yuefu': '乐府',
+  'shijing': '诗经',
+  'guwen': '古文',
+  'mengxue': '蒙学',
+  'prose': '散文',
+  'fragment': '残篇',
+  // Collection tags
+  'K12': '课本必背',
+  'tang_300': '唐诗三百首',
+  'song_300': '宋词三百首',
+  // Dynasty tags (for display)
+  '唐': '唐',
+  '宋': '宋',
+  '元': '元',
+  '明': '明',
+  '清': '清',
+  '汉': '汉',
+  '秦': '秦',
+  '先秦': '先秦',
+  '魏晋': '魏晋',
+  '南北朝': '南北朝',
+  '隋': '隋',
+  '五代': '五代',
+  '南朝': '南朝',
+  '现代': '现代',
+  '当代': '当代',
+  '近代': '近代',
+  '春秋': '春秋',
+  '战国': '战国',
+  '三国': '三国',
+  '晋': '晋',
+  '辽': '辽',
+  '金': '金',
+  '蒙学': '蒙学',
+  '古文': '古文',
 };
 
 // === 新增: 朝代历史顺序 ===
@@ -152,8 +185,6 @@ const DYNASTY_ORDER: string[] = [
   '辽', '金', '元', 
   '明', '清', '近代', '近现代', 
   '现代', '当代',
-  // 特殊分类
-  '蒙学', '古文', '未知'
 ];
 
 // 排序函数
@@ -181,9 +212,9 @@ const getTagDisplay = (tag: string) => TAG_DISPLAY_MAP[tag] || tag;
 // === 新增: 分类逻辑顺序 ===
 const TAG_ORDER: string[] = [
   // 选集 (高频)
-  '唐诗三百首', 
-  '宋词三百首', 
-  'K12', 
+  'tang_300',
+  'song_300',
+  'K12',
   // 体裁 (传统)
   'shi',      // 古诗
   'ci',       // 词
@@ -191,7 +222,13 @@ const TAG_ORDER: string[] = [
   'wen',      // 文言文
   'fu',       // 辞赋
   // 现代
-  'modern'    // 现代诗
+  'modern',    // 现代诗
+  'yuefu',     // 乐府
+  'shijing',   // 诗经
+  'guwen',     // 古文
+  'mengxue',   // 蒙学
+  'prose',     // 散文
+  'fragment',  // 残篇
 ];
 
 // 分类排序函数
@@ -216,10 +253,17 @@ const dynastyList = computed(() => {
   return ['全部', ...sorted];
 });
 
+// 朝代名集合——用于从"分类"过滤器中排除（朝代有独立筛选维度）
+const DYNASTY_NAMES: Set<string> = new Set([
+  '唐', '宋', '元', '明', '清', '汉', '秦', '隋', '晋',
+  '先秦', '魏晋', '南北朝', '南朝', '五代', '春秋', '战国', '三国',
+  '辽', '金', '现代', '当代', '近代', '近现代',
+]);
+
 const tagList = computed(() => {
-  // 过滤掉不在 TAG_DISPLAY_MAP 中的杂项标签（可选，保持界面整洁）
-  // 或者只对已知标签排序，未知标签放后面
-  const sorted = sortByTagOrder(filterOptions.value.tags);
+  // 排除朝代名（朝代有独立筛选维度），只保留体裁标签和选集标签
+  const filtered = filterOptions.value.tags.filter(t => !DYNASTY_NAMES.has(t));
+  const sorted = sortByTagOrder(filtered);
   return ['全部', ...sorted];
 });
 

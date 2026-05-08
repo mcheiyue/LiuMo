@@ -12,7 +12,7 @@
 
 *   **海量离线诗词库**: 
     *   内置 **40万+** 首诗词歌赋，无需联网即可搜索。
-    *   涵盖：全唐诗、全宋词、元曲、古文观止、诗经、论语、蒙学及现代诗。
+    *   涵盖：全唐诗、全宋词、元曲、古文观止、诗经、乐府、论语、蒙学及现代诗。
     *   支持按朝代、作者、体裁（诗/词/曲/文）快速筛选。
 *   **沉浸式体验**:
     *   **水墨涟漪**: 独特的交互反馈，指尖触碰如墨入水。
@@ -43,7 +43,7 @@
 *   **Core**: [Rust](https://www.rust-lang.org/) + [Tauri 2.0](https://tauri.app/) + [SQLite (FTS5)](https://www.sqlite.org/fts5.html)
 *   **Frontend**: [Vue 3](https://vuejs.org/) + [TypeScript](https://www.typescriptlang.org/) + [Pinia](https://pinia.vuejs.org/)
 *   **UI/Styling**: [Tailwind CSS 4](https://tailwindcss.com/) + [daisyUI 5](https://daisyui.com/)
-*   **Data Engineering**: Node.js ETL Pipeline (OpenCC + Bun)
+*   **Data Engineering**: Python ETL Pipeline (OpenCC + Bun)
 *   **Asset Management**: [LiuMo-assets](https://github.com/mcheiyue/LiuMo-assets) - 独立维护的大型二进制资源库（数据库、字体），以保持主仓库轻量化。
 
 ## 🤝 致谢 (Credits)

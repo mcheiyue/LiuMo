@@ -68,23 +68,13 @@ pub fn init_db(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// Helper to space Chinese characters for FTS search
-fn add_spaces_to_chinese(text: &str) -> String {
-    let mut result = String::new();
-    for c in text.chars() {
-        if is_chinese_or_alphanumeric(c) {
-            result.push(c);
-            result.push(' ');
-        }
-    }
-    result.trim().to_string()
-}
-
-fn is_chinese_or_alphanumeric(c: char) -> bool {
-    // Basic check for Chinese, alphanumeric.
-    // We want to space EVERYTHING that is significant.
-    // Actually, just spacing everything that is not whitespace is safer for the "space-every-char" strategy.
-    !c.is_whitespace()
+// 构建 FTS 搜索关键词（保留原始文本，不插入逐字空格）
+// 修复：builder.py 已移除 search_text 的逐字空格，此处同步不再对用户输入分词
+fn normalize_keyword(text: &str) -> String {
+    // 只保留中文、字母、数字，去除标点
+    text.chars()
+        .filter(|c| c.is_alphanumeric() || ('\u{4e00}'..='\u{9fff}').contains(c))
+        .collect()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,21 +101,30 @@ pub fn get_filter_options(app: AppHandle) -> Result<FilterOptions, String> {
         .collect::<Result<Vec<String>, _>>()
         .map_err(|e| e.to_string())?;
 
-    // 2. Get Tags (Extract from JSON string is hard in pure SQL without json extension)
-    // Simplified: Just return hardcoded tags for now, OR fetch all tags and aggregate in Rust.
-    // Fetching all tags is expensive.
-    // Let's return the standard V8 tags + top discovered ones if possible.
-    // For V8 MVP, return curated tags matching DB content (Chinese & Codes).
-    let tags = vec![
-        "唐诗三百首".to_string(),
-        "宋词三百首".to_string(),
-        "K12".to_string(),
-        "shi".to_string(),
-        "ci".to_string(),
-        "qu".to_string(),
-        "wen".to_string(),
-        "fu".to_string(),
-    ];
+    // 2. Get Tags — dynamically from database
+    // Query all distinct tags by scanning the tags JSON column, then deduplicate in Rust
+    let mut tag_stmt = conn
+        .prepare("SELECT DISTINCT tags FROM poetry WHERE tags IS NOT NULL AND tags != '[]'")
+        .map_err(|e| e.to_string())?;
+
+    let mut tag_set: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    let tag_rows = tag_stmt
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|e| e.to_string())?;
+
+    for row in tag_rows {
+        if let Ok(tags_json) = row {
+            if let Ok(parsed) = serde_json::from_str::<Vec<String>>(&tags_json) {
+                for t in parsed {
+                    if !t.is_empty() {
+                        tag_set.insert(t);
+                    }
+                }
+            }
+        }
+    }
+
+    let tags: Vec<String> = tag_set.into_iter().collect();
 
     Ok(FilterOptions { dynasties, tags })
 }
@@ -155,9 +154,8 @@ pub fn search_poetry(
         query.push_str("FROM poetry p ");
         query.push_str("JOIN poetry_fts f ON p.id = f.id ");
         query.push_str("WHERE poetry_fts MATCH ?");
-        let spaced_keyword = add_spaces_to_chinese(&keyword);
-        let fts_query = format!("\"{}\"", spaced_keyword);
-        params_vec.push(Box::new(fts_query));
+        let keyword_cleaned = normalize_keyword(&keyword);
+        params_vec.push(Box::new(keyword_cleaned));
     }
 
     // --- Apply Filters ---
