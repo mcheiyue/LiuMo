@@ -10,6 +10,19 @@ use tauri::{AppHandle, Manager};
 // For now, we assume the file name will be updated.
 const DB_GZ_BYTES: &[u8] = include_bytes!("../resources/liumo_v8.db.gz");
 
+fn table_has_column(conn: &Connection, table: &str, column: &str) -> Result<bool> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({})", table))?;
+    let columns = stmt.query_map([], |row| row.get::<_, String>(1))?;
+
+    for col in columns {
+        if col? == column {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Poetry {
     pub id: String,
@@ -142,6 +155,7 @@ pub fn search_poetry(
     let db_path = app_data_dir.join("liumo_v8.db");
 
     let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    let has_created_at = table_has_column(&conn, "poetry", "created_at").map_err(|e| e.to_string())?;
 
     let mut query = String::new();
     let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
@@ -185,7 +199,11 @@ pub fn search_poetry(
 
     // --- Order & Limit ---
     if keyword.trim().is_empty() {
-        query.push_str(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+        if has_created_at {
+            query.push_str(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+        } else {
+            query.push_str(" ORDER BY id DESC LIMIT ? OFFSET ?");
+        }
     } else {
         query.push_str(" ORDER BY rank LIMIT ? OFFSET ?");
     }
