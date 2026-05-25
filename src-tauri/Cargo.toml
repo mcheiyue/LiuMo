@@ -1,6 +1,6 @@
 [package]
 name = "liumo"
-version = "1.7.2"
+version = "1.7.3"
 description = "流摹 - 沉浸式书法练习工具"
 authors = ["heiyue"]
 edition = "2021"
