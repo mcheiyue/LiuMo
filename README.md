@@ -71,7 +71,11 @@ npm install
 # 或者使用 bun
 bun install
 
-# 3. 启动开发模式 (桌面端)
+# 3. 准备本地数据库资源（默认下载 Lite 数据包）
+npm run assets:fetch
+npm run assets:verify
+
+# 4. 启动开发模式 (桌面端)
 npm run tauri dev
 # 或者
 bun tauri dev
@@ -80,8 +84,12 @@ bun tauri dev
 ## 📦 打包发布
 
 ```bash
+npm run assets:fetch
+npm run assets:verify
 bun tauri build
 ```
+
+数据库资源由 [LiuMo-assets](https://github.com/mcheiyue/LiuMo-assets) 的 GitHub Release 提供，主仓库通过 `assets.lock.json` 锁定数据版本、文件名、大小和 SHA256，避免发布构建隐式追随 latest。
 
 ## 📄 开源协议
 

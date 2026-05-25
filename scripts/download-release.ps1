@@ -62,12 +62,12 @@ if ($LASTEXITCODE -ne 0) {
 Write-Success "Build Successful!"
 
 # 4. Download Asset
-Write-Step "Downloading Portable executable..."
+Write-Step "Downloading release executables..."
 $distDir = "dist_release"
 if (-not (Test-Path $distDir)) { New-Item -ItemType Directory -Path $distDir | Out-Null }
 
 # Download
-gh release download "$latestTag" --pattern "*portable.exe" --dir $distDir --clobber
+gh release download "$latestTag" --pattern "LiuMo_*_${latestTag}_x64.exe" --dir $distDir --clobber
 
 Write-Success "Download complete! Check '$distDir' folder."
 Get-ChildItem $distDir

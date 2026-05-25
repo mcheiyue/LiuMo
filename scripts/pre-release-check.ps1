@@ -64,6 +64,17 @@ if ($changelogContent -notmatch $pattern) {
 Write-Success "CHANGELOG.md contains entry for v$pkgVersion"
 
 # 4. Local Build Test
+Write-Step "Preparing locked database asset..."
+cmd /c "npm run assets:fetch"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error-Exit "Asset fetch failed! Please check assets.lock.json and LiuMo-assets release."
+}
+cmd /c "npm run assets:verify"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error-Exit "Asset verification failed!"
+}
+Write-Success "Locked database asset is ready."
+
 Write-Step "Running Local Build Test (npm run build)..."
 # Using cmd /c to ensure npm is found and executed correctly
 cmd /c "npm run build"

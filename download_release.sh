@@ -38,14 +38,13 @@ gh run watch "$RUN_ID" --exit-status
 
 if [ $? -eq 0 ]; then
     echo "✅ Build Successful!"
-    echo "⬇️  Downloading Portable executable..."
+    echo "⬇️  Downloading release executables..."
     
     # Create dist folder if not exists
     mkdir -p dist_release
     
-    # Download the specific portable asset
-    # Note: Matches the artifact name from release.yml: LiuMo_*_portable.exe
-    gh release download "$LATEST_TAG" --pattern "*portable.exe" --dir dist_release --clobber
+    # Download the executables produced by release.yml
+    gh release download "$LATEST_TAG" --pattern "LiuMo_*_${LATEST_TAG}_x64.exe" --dir dist_release --clobber
     
     echo "🎉 Download complete! Check 'dist_release' folder."
     ls -lh dist_release
