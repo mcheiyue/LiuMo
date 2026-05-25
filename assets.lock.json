@@ -1,0 +1,18 @@
+{
+  "schema_version": "v8",
+  "asset_repository": "mcheiyue/LiuMo-assets",
+  "data_release_tag": "v8-data-2026.05.08-1709",
+  "target_path": "src-tauri/resources/liumo_v8.db.gz",
+  "assets": {
+    "lite": {
+      "file": "liumo_v8_lite.db.gz",
+      "size": 338865,
+      "sha256": "77b131e2d0fa4675201c6e01b6e04531898fb271bdaabe8007deb323ae5781fc"
+    },
+    "full": {
+      "file": "liumo_v8_full.db.gz",
+      "size": 179610206,
+      "sha256": "e3387e10d5d6a3b918b6afd5225d15782b3ddfc355cd63c7ae48a77a9b3b27ef"
+    }
+  }
+}

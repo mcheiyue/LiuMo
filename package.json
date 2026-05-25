@@ -5,6 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "assets:fetch": "node scripts/fetch-assets.mjs --variant lite",
+    "assets:fetch:lite": "node scripts/fetch-assets.mjs --variant lite",
+    "assets:fetch:full": "node scripts/fetch-assets.mjs --variant full",
+    "assets:verify": "node scripts/verify_data.mjs",
+    "prepare:tauri": "npm run assets:fetch && npm run assets:verify",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri"
