@@ -75,7 +75,7 @@ watchEffect(() => {
 // Recalculate layout when content or config changes
 const layoutResult = computed(() => {
   if (!poetryStore.parsedContent) return null;
-  return calculate(poetryStore.parsedContent, layoutConfig.value);
+  return calculate(poetryStore.parsedContent, layoutConfig.value, poetryStore.layoutStrategy);
 });
 
 const totalHeight = computed(() => layoutResult.value?.totalHeight || 0);
@@ -212,7 +212,7 @@ watch(() => layoutConfig.value, (newConfig) => {
       <!-- Render Items -->
       <CharacterCell
         v-for="item in visibleItems"
-        :key="`${item.row}-${item.col}`"
+        :key="`${item.row}-${item.col}-${item.char}`"
         :char="item.char"
         :width="item.width"
         :height="item.height"
@@ -225,7 +225,7 @@ watch(() => layoutConfig.value, (newConfig) => {
         }"
         :border-mode="layoutConfig.borderMode"
         :show-grid="layoutConfig.borderMode === 'full'"
-        :grid-type="(layoutConfig.gridType as any)"
+        :grid-type="layoutConfig.gridType"
         :grid-color="'var(--color-grid)'"
       />
     </div>

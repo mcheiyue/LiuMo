@@ -53,7 +53,7 @@ export interface LayoutConfig {
   layoutDirection: 'vertical' | 'horizontal';
   verticalColumnOrder?: 'rtl' | 'ltr';
   borderMode: 'full' | 'lines-only' | 'none';
-  gridType: string; // Using string to support custom grid types if needed, but primarily GridType
+  gridType: GridType;
   gap: number;
   maxRows?: number;
 }

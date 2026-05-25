@@ -60,9 +60,10 @@ export function useLayoutEngine() {
 
   function calculate(
     content: StructuredContent, 
-    cfg: LayoutConfig
+    cfg: LayoutConfig,
+    preferredStrategy?: LayoutStrategy
   ): LayoutResult {
-    const strategyName = detectStrategy(content);
+    const strategyName = preferredStrategy || detectStrategy(content);
     const strategy = strategies[strategyName] || strategies.CENTER_ALIGNED;
     return strategy.calculate(content, cfg);
   }

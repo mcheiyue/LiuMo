@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import jsPDF from 'jspdf';
 import { getLayoutStrategy, type LayoutStrategy } from '../utils/layoutEngine/index';
-import type { LayoutConfig, LayoutItem } from '../utils/layoutEngine/types';
+import type { GridType, LayoutConfig, LayoutItem } from '../utils/layoutEngine/types';
 import { CELL_SIZE } from '../utils/layoutEngine/constants';
 
 // Initialize harfbuzz
@@ -18,7 +18,7 @@ export interface WorkerPayload {
     rowsPerPage: number;
     colsPerPage: number;
     scale: number;
-    gridType: string;
+    gridType: GridType;
     width: number; // 页面像素宽
     height: number; // 页面像素高
   };
